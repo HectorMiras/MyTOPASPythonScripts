@@ -1,0 +1,5 @@
+# ignore all .bak files
+ *.bak
+
+# ignore all files in the docs directory
+/__pycache__/
