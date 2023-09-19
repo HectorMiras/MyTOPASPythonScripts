@@ -3,7 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from mpl_toolkits.mplot3d import Axes3D
+#from mpl_toolkits.mplot3d import Axes3D
 
 
 def generate_weighted_energy_histogram(folder, phsp_file, bins, min_energy, max_energy,
@@ -16,12 +16,12 @@ def generate_weighted_energy_histogram(folder, phsp_file, bins, min_energy, max_
     bin_width = (max_energy - min_energy) / bins
 
     # Particle type
-    particle_type = 22 # by default photons
-    if particle=="electrons":
+    particle_type = 22  # by default photons
+    if particle == "electrons":
         particle_type = 11
 
     # Update histogram counts using weights
-    with open(os.path.join(folder, phsp_file+'.phsp'), 'r') as f:
+    with open(os.path.join(folder, phsp_file + '.phsp'), 'r') as f:
         for line in f:
             cols = line.split()
             if int(cols[7]) == particle_type:
@@ -57,6 +57,7 @@ def generate_weighted_energy_histogram(folder, phsp_file, bins, min_energy, max_
             for i in range(bins):
                 f.write(f'{bin_centers[i]} {hist_counts[i]} {hist_uncertainties[i]}\n')
 
+
 def read_phsp_to_dataframe(phsp_file):
     # Example usage
     # phsp_file = 'example.phsp'
@@ -64,30 +65,33 @@ def read_phsp_to_dataframe(phsp_file):
     # print(df)
 
     # Define the column names
-    column_names = ['pos_x', 'pos_y', 'pos_z', 'dircos_x', 'dircos_y', 'energy', 'weight', 'particle_type', 'flag_neg_dircos', 'flag_first']
+    column_names = ['pos_x', 'pos_y', 'pos_z', 'dircos_x', 'dircos_y', 'energy', 'weight', 'particle_type',
+                    'flag_neg_dircos', 'flag_first']
 
     # Read the whole phsp file and create a DataFrame
-    df = pd.read_csv(phsp_file+'.phsp', sep='\s+', header=None, names=column_names)
+    df = pd.read_csv(phsp_file + '.phsp', sep='\s+', header=None, names=column_names)
 
     return df
 
 
+def merge_phsp_files(phsp_files, output_path):
+    if len(phsp_files) > 0:
+        # Remove the output file if it exists
+        filename = os.path.basename(phsp_files[0])
+        output_phsp_file = os.path.join(output_path, filename)
+        if os.path.exists(output_phsp_file):
+            os.remove(output_phsp_file)
+        with open(output_phsp_file, 'a') as outfile:
+            for phsp_file in phsp_files:
+                # Read and process the .phsp and .header files as needed
+                # For example, read the .phsp file line by line, and extract information from the .header file
+                # pass
+                # Append the result_phsp.phsp file to the combined output file
+                with open(phsp_file, 'r') as infile:
+                    outfile.writelines(infile.readlines())
 
-def merge_phsp_files(phsp_files, output_phsp_file):
-    # Remove the output file if it exists
-    if os.path.exists(output_phsp_file):
-        os.remove(output_phsp_file)
-    with open(output_phsp_file, 'a') as outfile:
-        for phsp_file in phsp_files:
-            # Read and process the .phsp and .header files as needed
-            # For example, read the .phsp file line by line, and extract information from the .header file
-            # pass
-            # Append the result_phsp.phsp file to the combined output file
-            with open(phsp_file, 'r') as infile:
-                outfile.writelines(infile.readlines())
 
-
-def merge_header_files(header_files, output_file):
+def merge_header_files(header_files, output_path):
     def read_val(str_line):
         val = str_line.split(":")[-1].strip().split(" ", 1)[0]
         val = float(val)
@@ -115,6 +119,8 @@ def merge_header_files(header_files, output_file):
     max_E_g = -1.0
 
     # Remove the output file if it exists
+    filename = os.path.basename(header_files[0])
+    output_file = os.path.join(output_path, filename)
     if os.path.exists(output_file):
         os.remove(output_file)
 
@@ -202,7 +208,8 @@ def split_phsp_file(folder, input_file, n):
         with open(output_file, 'w') as outfile:
             outfile.writelines(lines[start_index:end_index])
 
-        generate_header(os.path.join(folder, f'work/run{i + 1}'),input_file)
+        generate_header(os.path.join(folder, f'work/run{i + 1}'), input_file)
+
 
 def generate_header(folder, phsp_file):
     # Initialize variables
@@ -223,7 +230,7 @@ def generate_header(folder, phsp_file):
     gamma_pdg = 22
 
     # Read phsp file line by line
-    with open(os.path.join(folder,phsp_file+'.phsp'), 'r') as f:
+    with open(os.path.join(folder, phsp_file + '.phsp'), 'r') as f:
         for line in f:
             cols = line.split()
             x, y, z, dircos_x, dircos_y, energy, weight, particle_type, flag_neg_dircos, flag_first = cols
@@ -246,7 +253,7 @@ def generate_header(folder, phsp_file):
                 max_energy_gamma = max(max_energy_gamma, energy)
 
     # Write the header file
-    with open(os.path.join(folder,phsp_file+'.header'), 'w') as f:
+    with open(os.path.join(folder, phsp_file + '.header'), 'w') as f:
         f.write("TOPAS ASCII Phase Space\n\n")
         f.write(f"Number of Original Histories: {total_histories}\n")
         f.write(f"Number of Original Histories that Reached Phase Space: {total_reached}\n")
@@ -263,21 +270,23 @@ def generate_header(folder, phsp_file):
         f.write(f"Maximum Kinetic Energy of e-: {max_energy_electron} MeV\n")
         f.write(f"Maximum Kinetic Energy of gamma: {max_energy_gamma} MeV\n")
 
-def filter_phsp_by_particle(folder,phsp_file,particle):
+
+def filter_phsp_by_particle(folder, phsp_file, particle):
     # particle type
     particle_type = 22  # by default fotons
     if particle == "electrons":
         particle_type = 11
     # Update histogram counts using weights
     with open(os.path.join(folder, phsp_file + '.phsp'), 'r') as f_source:
-        with open(os.path.join(folder, phsp_file + '_' + particle +'.phsp'), 'w') as f_target:
+        with open(os.path.join(folder, phsp_file + '_' + particle + '.phsp'), 'w') as f_target:
             for line in f_source:
                 cols = line.split()
                 if int(cols[7]) == particle_type:
                     f_target.writelines(line)
     generate_header(folder, phsp_file + '_' + particle)
 
-def plot_phsp_particle_positions(data, filename = None):
+
+def plot_phsp_particle_positions(data, filename=None):
     # Extract position columns and energy
     positions = data[['pos_x', 'pos_y', 'pos_z']]
     energy = data['energy']
@@ -290,7 +299,7 @@ def plot_phsp_particle_positions(data, filename = None):
     energy_norm = (energy - energy.min()) / (energy.max() - energy.min())
 
     # Create a scatter plot with colormap based on energy
-    scale_factor=10000.0 # from cm to um
+    scale_factor = 10000.0  # from cm to um
     scatter = ax.scatter(positions['pos_x'], positions['pos_y'],
                          positions['pos_z'], c=energy_norm, alpha=0.6, edgecolors='w', s=1, cmap='viridis')
 
@@ -305,8 +314,3 @@ def plot_phsp_particle_positions(data, filename = None):
     # Save the figure to a file if the filename is provided
     if filename:
         plt.savefig(filename, dpi=300)
-
-
-
-
-

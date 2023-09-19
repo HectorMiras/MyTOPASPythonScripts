@@ -3,3 +3,5 @@
 
 # ignore all files in the docs directory
 /__pycache__/
+/.idea/
+/venv/
