@@ -49,7 +49,7 @@ def merge_combine_csv(output_file_paths, output_path):
     var = np.sqrt(var / cont - combined_sum * combined_sum / (cont * cont))
 
     # Write the combined results to a new output file
-    with open(os.path.join(output_path, f'combined_{filename}.csv'), "w") as f:
+    with open(os.path.join(output_path, f'combined_{filename}'), "w") as f:
         for line in lines[:-1]:
             f.write(line)
 
@@ -58,7 +58,7 @@ def merge_combine_csv(output_file_paths, output_path):
 
     # Write a results file with all the results from each job
     lines_list.sort(key=lambda x: int(x.split()[0]))
-    with open(os.path.join(output_path, f'AllJobs_{filename}.csv'), "w") as f:
+    with open(os.path.join(output_path, f'AllJobs_{filename}'), "w") as f:
         for line in lines[:-1]:
             f.write(line)
         for line in lines_list:
