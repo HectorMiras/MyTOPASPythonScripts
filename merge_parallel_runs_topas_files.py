@@ -6,15 +6,16 @@ import os
 import sys
 
 sim_path = sys.argv[1]
+sim_config_file = sys.argv[2]
 #sim_path = "/home/hector/mytopassimulations/MGHsimulations/tests/nodes_output"
 output_dir = os.path.join(sim_path, "results")
 
-file_patterns = ["DoseToCell*", "DoseToNucleus*electrons.csv", "DoseToNucleus*gammas.csv", "nucleus_PHSP*"]
+#file_patterns = ["DoseToCell*", "DoseToNucleus*electrons.csv", "DoseToNucleus*gammas.csv", "nucleus_PHSP*"]
 
 # If simconfig.json file exists in the directory, get the OUTPUT_FILE_PATTERNS from the file
-if os.path.isfile('simconfig.json'):
+if os.path.isfile(sim_config_file):
     # Open the file and read the JSON content
-    with open('simconfig.json', 'r') as file:
+    with open(sim_config_file, 'r') as file:
         data = json.load(file)
         file_patterns = data.get('OUTPUT_FILE_PATTERNS', [])  # Provide default empty list if key doesn't exist
         print(f"File patterns for reduce: {file_patterns}")
