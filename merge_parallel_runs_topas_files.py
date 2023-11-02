@@ -5,8 +5,8 @@ import json
 import os
 import sys
 
-#sim_path = sys.argv[1]
-sim_path = "/home/hector/mytopassimulations/MGHsimulations/tests/nodes_output"
+sim_path = sys.argv[1]
+#sim_path = "/home/hector/mytopassimulations/MGHsimulations/tests/nodes_output"
 output_dir = os.path.join(sim_path, "results")
 
 file_patterns = ["DoseToCell*", "DoseToNucleus*electrons.csv", "DoseToNucleus*gammas.csv", "nucleus_PHSP*"]
