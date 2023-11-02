@@ -3,7 +3,7 @@ from files_and_directory_manager import get_outputfile_paths
 import numpy as np
 
 
-def merge_combine_csv(output_file_paths, output_path):
+def merge_combine_csv(output_file_paths, output_path, append=False):
 
     os.makedirs(output_path, exist_ok=True)
 
@@ -30,7 +30,8 @@ def merge_combine_csv(output_file_paths, output_path):
         # Extract the data from the last line
         if len(lines) > 0:
             data_line = lines[-1]
-            lines_list.append(f'{run_number} {data_line}')
+            if append:
+                lines_list.append(f'{run_number} {data_line}')
             data_values = [float(value) for value in data_line.split(', ')]
 
             sum_dose, mean_dose, count_in_bin, second_moment, variance, std_dev, histories_with_scorer_active = data_values
@@ -57,12 +58,13 @@ def merge_combine_csv(output_file_paths, output_path):
                 f"{combined_variance}, {combined_std_dev}, {combined_histories_with_scorer_active}\n")
 
     # Write a results file with all the results from each job
-    lines_list.sort(key=lambda x: int(x.split()[0]))
-    with open(os.path.join(output_path, f'AllJobs_{filename}'), "w") as f:
-        for line in lines[:-1]:
-            f.write(line)
-        for line in lines_list:
-            f.write(line)
+    if append:
+        lines_list.sort(key=lambda x: int(x.split()[0]))
+        with open(os.path.join(output_path, f'AllJobs_{filename}'), "w") as f:
+            for line in lines[:-1]:
+                f.write(line)
+            for line in lines_list:
+                f.write(line)
 
     unc_2sigma = combined_std_dev / np.sqrt(combined_histories_with_scorer_active)
     print('')
