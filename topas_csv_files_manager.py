@@ -119,7 +119,6 @@ def merge_csv(output_file_paths, output_path):
 
     # Initialize an empty DataFrame to hold all the merged data
     merged_data = pd.DataFrame()
-    merged_data.columns = columns
     cont = 0
 
     for file_path in output_file_paths:
@@ -173,7 +172,7 @@ def merge_csv(output_file_paths, output_path):
         for line in header_lines:
             f.write(line)
 
-    merged_data.to_csv(os.path.join(output_path, f'combined_{filename}'), mode='a', header=False, index=False)
+    merged_data.to_csv(os.path.join(output_path, f'combined_{filename}'), mode='a', header=False, index=False, sep=', ')
 
 
     print('')
