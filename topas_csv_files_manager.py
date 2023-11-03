@@ -140,6 +140,7 @@ def merge_csv(output_file_paths, output_path):
         if merged_data.empty:
             current_data.columns = columns
             merged_data = current_data.copy()
+            cont += 1
         else:
             try:
                 # If DataFrame is not named, you can set column names
