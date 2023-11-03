@@ -173,7 +173,7 @@ def merge_csv(output_file_paths, output_path):
         for line in header_lines:
             f.write(line)
 
-    merged_data.to_csv(os.path.join(output_path, f'combined_{filename}'), mode='a', header=False, index=False, sep=', ')
+    merged_data.to_csv(os.path.join(output_path, f'combined_{filename}'), mode='a', header=False, index=False)
 
 
     print('')
