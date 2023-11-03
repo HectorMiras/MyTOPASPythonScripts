@@ -3,8 +3,8 @@ from files_and_directory_manager import get_outputfile_paths
 import numpy as np
 import pandas as pd
 
-
-def merge_combine_csv(output_file_paths, output_path, append=False):
+# Function to merge the dose to medium csv files from parallel runs of the TOPAS_CellsNP simulations
+def merge_CellsNP_csv(output_file_paths, output_path, append=False):
 
     os.makedirs(output_path, exist_ok=True)
 
@@ -76,6 +76,7 @@ def merge_combine_csv(output_file_paths, output_path, append=False):
     print('')
 
 
+# Function to merge topas csv dose to medium outputs from parallel runs
 def get_header_info(file_path):
     columns = []
     header_lines = []
