@@ -12,7 +12,7 @@ def get_outputfile_paths(parent_dir, output_pattern):
         if subdir.startswith('run'):
             # Find all output files in the current run folder that start with output_name
             run_folder_path = os.path.join(parent_dir, subdir)
-            output_files = glob.glob(f"{run_folder_path}/{output_pattern}")
+            output_files = glob.glob(f"{run_folder_path}/{output_pattern.split('/')[-1]}")
             # Add the full path of each output file to the list
             for file_path in output_files:
                 output_file_paths.append(Path(file_path).absolute())
