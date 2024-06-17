@@ -3,6 +3,29 @@ from files_and_directory_manager import get_outputfile_paths
 import numpy as np
 import pandas as pd
 
+
+def collect_np_number(output_file_paths, output_path):
+
+    os.makedirs(output_path, exist_ok=True)
+
+
+    lines_list = []
+    for file_path in output_file_paths:
+        path = os.path.dirname(file_path)
+        run_number = path.split('run')[-1].split('/')[0]
+
+        with open(file_path, 'r') as f:
+            nlines = int(f.readlines()[0])
+            lines_list.append(f'{run_number} {nlines}')
+
+    # Write a results file with all the results from each job
+    lines_list.sort(key=lambda x: int(x.split()[0]))
+    with open(os.path.join(output_path, f'AllJobs_np_number.csv'), "w") as f:
+        f.write(f'#  Run#  NP#\n')
+        for line in lines_list:
+            f.write(f'{line}\n')
+
+
 # Function to merge the dose to medium csv files from parallel runs of the TOPAS_CellsNP simulations
 def merge_CellsNP_csv(output_file_paths, output_path, append=False):
 
@@ -160,9 +183,9 @@ def merge_csv(output_file_paths, output_path):
             except:
                 pass
 
-    if 'Mean' in columns and 'Sum' in columns and 'Histories_with_Scorer_Active':
+    if 'Mean' in columns and 'Sum' in columns and 'Histories_with_Scorer_Active' in columns:
         merged_data['Mean'] = merged_data['Sum'] / merged_data['Histories_with_Scorer_Active']
-    if 'Mean' in columns and 'Variance' in columns and 'Second_Moment' in columns and 'Histories_with_Scorer_Active':
+    if 'Mean' in columns and 'Variance' in columns and 'Second_Moment' in columns and 'Histories_with_Scorer_Active' in columns:
         merged_data['Variance'] = (merged_data['Second_Moment'] / merged_data['Histories_with_Scorer_Active'] -
                                    merged_data['Mean']**2)
     if 'Standard_Deviation' in columns and 'Variance' in columns:
