@@ -7,10 +7,11 @@ import sys
 
 sim_path = sys.argv[1]
 sim_config_file = sys.argv[2]
-#sim_path = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/RunDir/"
-#sim_config_file = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/simconfig.json"
+#sim_path = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/azure_batch_files/simulationfiles/nodes_output_nonps"
+#sim_config_file = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/azure_batch_files/simconfig.json"
 output_dir = os.path.join(sim_path, "results")
-
+print(f'Simulation path: {sim_path}')
+print(f'Config file: {sim_config_file}')
 #file_patterns = ["DoseToCell*", "DoseToNucleus*electrons.csv", "DoseToNucleus*gammas.csv", "nucleus_PHSP*"]
 
 # If simconfig.json file exists in the directory, get the OUTPUT_FILE_PATTERNS from the file

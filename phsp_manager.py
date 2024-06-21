@@ -299,12 +299,13 @@ def plot_phsp_particle_positions(data, filename=None):
     energy_norm = (energy - energy.min()) / (energy.max() - energy.min())
 
     # Create a scatter plot with colormap based on energy
-    scale_factor = 10000.0  # from cm to um
+    scale_factor = 0.001  # for distance units conversion
+    positions = scale_factor*positions
     scatter = ax.scatter(positions['pos_x'], positions['pos_y'],
-                         positions['pos_z'], c=energy_norm, alpha=0.6, edgecolors='w', s=1, cmap='viridis')
+                         positions['pos_z'], c=1000*energy, alpha=0.6, edgecolors='w', s=50, cmap='viridis')
 
     # Add a colorbar to show the energy values
-    cbar = fig.colorbar(scatter, ax=ax, label='Energy [MeV]')
+    cbar = fig.colorbar(scatter, ax=ax, label='Energy [keV]')
 
     ax.set_xlabel('X [um]')
     ax.set_ylabel('Y [um]')

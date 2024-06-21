@@ -7,8 +7,7 @@ import sys
 
 sim_path = sys.argv[1]
 sim_config_file = sys.argv[2]
-#sim_path = "/home/hector/mytopassimulations/MGHsimulations/tests/nodes_output_I125"
-#sim_config_file = "/home/hector/mytopassimulations/MGHsimulations/tests/nodes_output_I125/simconfig.json"
+
 output_dir = os.path.join(sim_path, "results")
 
 #file_patterns = ["DoseToCell*", "DoseToNucleus*electrons.csv", "DoseToNucleus*gammas.csv", "nucleus_PHSP*"]
