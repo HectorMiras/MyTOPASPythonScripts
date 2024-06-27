@@ -7,10 +7,10 @@ import sys
 from pathlib import Path
 import glob
 
-#sim_path = sys.argv[1]
-#sim_config_file = sys.argv[2]
-sim_path = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/azure_batch_files/simulationfiles/nodes_output"
-sim_config_file = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/azure_batch_files/simconfig.json"
+sim_path = sys.argv[1]
+sim_config_file = sys.argv[2]
+#sim_path = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/azure_batch_files/simulationfiles/nodes_output"
+#sim_config_file = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/azure_batch_files/simconfig.json"
 
 print(f'Simulation path: {sim_path}')
 print(f'Config file: {sim_config_file}')
