@@ -3,6 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from files_and_directory_manager import remove_part_suffix
 #from mpl_toolkits.mplot3d import Axes3D
 
 
@@ -76,9 +77,12 @@ def read_phsp_to_dataframe(phsp_file):
 
 def merge_phsp_files(phsp_files, output_path):
     if len(phsp_files) > 0:
-        # Remove the output file if it exists
         filename = os.path.basename(phsp_files[0])
+        # remove _part# suffix if it comes from split simulation
+        if '_part' in filename:
+            filename = remove_part_suffix(filename)
         output_phsp_file = os.path.join(output_path, filename)
+        # Remove the output file if it exists
         if os.path.exists(output_phsp_file):
             os.remove(output_phsp_file)
         with open(output_phsp_file, 'a') as outfile:
@@ -120,6 +124,9 @@ def merge_header_files(header_files, output_path):
 
     # Remove the output file if it exists
     filename = os.path.basename(header_files[0])
+    # remove _part# suffix if it comes from split simulation
+    if '_part' in filename:
+        filename = remove_part_suffix(filename)
     output_file = os.path.join(output_path, filename)
     if os.path.exists(output_file):
         os.remove(output_file)
@@ -186,7 +193,7 @@ def merge_header_files(header_files, output_path):
 def split_phsp_file(folder, input_file, n):
     # creo que está perdiendo algunas particulas, seguramente por la condicion de que cada chunk empiece con historia original
     if not os.path.exists(folder):
-        os.makedirs(output_folder)
+        os.makedirs(folder)
 
     with open(os.path.join(folder, f'{input_file}.phsp')) as infile:
         lines = infile.readlines()

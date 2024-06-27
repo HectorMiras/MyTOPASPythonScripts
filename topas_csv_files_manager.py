@@ -1,7 +1,8 @@
 import os
-from files_and_directory_manager import get_outputfile_paths
+from files_and_directory_manager import remove_part_suffix
 import numpy as np
 import pandas as pd
+
 
 
 def collect_np_number(output_file_paths, output_path):
@@ -74,23 +75,28 @@ def merge_CellsNP_csv(output_file_paths, output_path, append=False):
     var = np.sqrt(var / cont - combined_sum * combined_sum / (cont * cont))
 
     # Write the combined results to a new output file
-    with open(os.path.join(output_path, f'combined_{filename}'), "w") as f:
+    if '_part' in filename:
+        outputfilename = remove_part_suffix(filename)
+    else:
+        outputfilename = f'combined_{filename}'
+    with open(os.path.join(output_path, outputfilename), "w") as f:
         for line in lines[:-1]:
             f.write(line)
 
         f.write(f"{combined_sum}, {combined_mean}, {combined_count_in_bin}, {combined_second_moment}, "
                 f"{combined_variance}, {combined_std_dev}, {combined_histories_with_scorer_active}\n")
 
-    # Write a results file with all the results from each job
-    if append:
-        lines_list.sort(key=lambda x: int(x.split()[0]))
-        with open(os.path.join(output_path, f'AllJobs_{filename}'), "w") as f:
-            for line in lines[:-1]:
-                f.write(line)
-            for line in lines_list:
-                f.write(line)
+    if '_part' not in filename:
+        # Write a results file with all the results from each job
+        if append:
+            lines_list.sort(key=lambda x: int(x.split()[0]))
+            with open(os.path.join(output_path, f'AllJobs_{filename}'), "w") as f:
+                for line in lines[:-1]:
+                    f.write(line)
+                for line in lines_list:
+                    f.write(line)
 
-    unc_2sigma = combined_std_dev / np.sqrt(combined_histories_with_scorer_active)
+    unc_2sigma = 2*combined_std_dev / np.sqrt(combined_histories_with_scorer_active)
     print('')
     print(f'File {filename:}')
     print(f'Number of results merged: {cont} out of {len(output_file_paths)}')

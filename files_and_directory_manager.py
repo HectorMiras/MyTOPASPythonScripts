@@ -1,6 +1,12 @@
 import os
 from pathlib import Path
 import glob
+import re
+
+def remove_part_suffix(filename):
+    # Use regex to remove '_part#' from the filename
+    new_filename = re.sub(r'_part\d+', '', filename)
+    return new_filename
 
 
 def get_outputfile_paths(parent_dir, output_pattern):
