@@ -56,7 +56,7 @@ def merge_CellsNP_csv(output_file_paths, output_path, append=False):
         if len(lines) > 0:
             data_line = lines[-1]
             if append:
-                lines_list.append(f'{run_number} {data_line}')
+                lines_list.append(f'{run_number}, {data_line}')
             data_values = [float(value) for value in data_line.split(', ')]
 
             sum_dose, mean_dose, count_in_bin, second_moment, variance, std_dev, histories_with_scorer_active = data_values
@@ -89,7 +89,7 @@ def merge_CellsNP_csv(output_file_paths, output_path, append=False):
     if '_part' not in filename:
         # Write a results file with all the results from each job
         if append:
-            lines_list.sort(key=lambda x: int(x.split()[0]))
+            lines_list.sort(key=lambda x: int(x.split(',')[0]))
             with open(os.path.join(output_path, f'AllJobs_{filename}'), "w") as f:
                 for line in lines[:-1]:
                     f.write(line)
