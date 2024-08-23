@@ -4,7 +4,61 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from files_and_directory_manager import remove_part_suffix
+
+
 #from mpl_toolkits.mplot3d import Axes3D
+
+
+def np_stats(folder, phsp_file):
+    # Dictionary to store the count of electrons for each nano-particle index
+    count_per_nano_particle = {}
+    electron_count_per_nano_particle = {}
+    gamma_count_per_nano_particle = {}
+    # Particle type code for electrons (PDG format: 11 for electrons, 22 for gammas)
+    electron_pdg_code = 11
+    gamma_pdg_code = 22
+    particle_pdg_code = {11: "electrons", 22: "gammas"}
+
+    # Open the phase space file for reading
+    with open(os.path.join(folder, phsp_file + '.phsp'), 'r') as file:
+        for line in file:
+            # Split the line into components
+            columns = line.split()
+
+            # Parse the relevant fields
+            particle_type = int(columns[7])  # Particle Type (PDG format)
+            nano_particle_index = int(columns[10])  # Nano-particle index
+
+            # Check if the particle is an electron
+            if particle_type == electron_pdg_code:
+                # If this nano-particle index is already in the dictionary, increment its count
+                if nano_particle_index in electron_count_per_nano_particle:
+                    electron_count_per_nano_particle[nano_particle_index] += 1
+                else:
+                    # Otherwise, initialize the count for this nano-particle index
+                    electron_count_per_nano_particle[nano_particle_index] = 1
+
+            # Check if the particle is a foton
+            if particle_type == gamma_pdg_code:
+                # If this nano-particle index is already in the dictionary, increment its count
+                if nano_particle_index in gamma_count_per_nano_particle:
+                    gamma_count_per_nano_particle[nano_particle_index] += 1
+                else:
+                    # Otherwise, initialize the count for this nano-particle index
+                    gamma_count_per_nano_particle[nano_particle_index] = 1
+
+            if nano_particle_index in count_per_nano_particle:
+                count_per_nano_particle[nano_particle_index][particle_pdg_code[particle_type]] += 1
+            else:
+                count_per_nano_particle[nano_particle_index] = {}
+                if particle_type == 11:
+                    count_per_nano_particle[nano_particle_index][particle_pdg_code[11]] = 1
+                    count_per_nano_particle[nano_particle_index][particle_pdg_code[22]] = 0
+                else:
+                    count_per_nano_particle[nano_particle_index][particle_pdg_code[11]] = 0
+                    count_per_nano_particle[nano_particle_index][particle_pdg_code[22]] = 1
+
+    print(f'Number of NPs activated: {len(count_per_nano_particle.keys())}')
 
 
 def generate_weighted_energy_histogram(folder, phsp_file, bins, min_energy, max_energy,
@@ -29,17 +83,17 @@ def generate_weighted_energy_histogram(folder, phsp_file, bins, min_energy, max_
                 energy = float(cols[5])  # Energy is at index 5
                 weight = float(cols[6])  # Weight is at index 6
                 bin_index = int((energy - min_energy) / bin_width)
-                if bin_index == bins:  # Include the max energy value in the last bin
-                    bin_index -= 1
+                if bin_index >= bins:  # Include the max energy value in the last bin
+                    bin_index = bins - 1
                 hist_counts[bin_index] += weight
 
     # Calculate uncertainties
     hist_uncertainties = np.sqrt(hist_counts)
 
     # Plot the histogram with weights
-    bin_edges = np.linspace(min_energy, max_energy, bins + 1)
+    bin_edges = 1000000 * np.linspace(min_energy, max_energy, bins + 1)
     plt.hist(bin_edges[:-1], bin_edges, weights=hist_counts)
-    plt.xlabel('Energy [MeV]')
+    plt.xlabel('Energy [eV]')
     plt.ylabel('Weighted Counts')
     plt.title('Weighted Energy Histogram')
 
@@ -307,9 +361,9 @@ def plot_phsp_particle_positions(data, filename=None):
 
     # Create a scatter plot with colormap based on energy
     scale_factor = 0.001  # for distance units conversion
-    positions = scale_factor*positions
+    positions = scale_factor * positions
     scatter = ax.scatter(positions['pos_x'], positions['pos_y'],
-                         positions['pos_z'], c=1000*energy, alpha=0.6, edgecolors='w', s=50, cmap='viridis')
+                         positions['pos_z'], c=1000 * energy, alpha=0.6, edgecolors='w', s=50, cmap='viridis')
 
     # Add a colorbar to show the energy values
     cbar = fig.colorbar(scatter, ax=ax, label='Energy [keV]')
