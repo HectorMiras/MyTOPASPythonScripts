@@ -1,6 +1,6 @@
 from phsp_manager import generate_weighted_energy_histogram, np_stats
 
-folder = '/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/smallcellresults/topas-azure-med1-cells1-phspnp/nodes_output/results'
+folder = '/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/smallcellresults/topas-azure-med0p05-cells0p05/results'
 filename = 'PhaseSpace_NP' # without extension
 
 

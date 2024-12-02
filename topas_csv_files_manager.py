@@ -26,9 +26,116 @@ def collect_np_number(output_file_paths, output_path):
         for line in lines_list:
             f.write(f'{line}\n')
 
+def merge_TOPAS_csv(output_file_paths, output_path):
+    '''
+
+    :param output_file_paths: List of outputs to be merged
+    :param output_path: output path for the merge
+    :return: Call the appropiate merge fucntion
+    '''
+    binned = False
+
+    with open(output_file_paths[0], 'r') as f:
+        lines = f.readlines()
+
+    # Extract the data from the last line
+    comment_lines = []
+    data_lines = []
+    statistics_labels = []
+    if len(lines) > 0:
+        for line in lines:
+            if line.startswith('#'):
+                comment_lines.append(line)
+                if line.startswith("# Binned by"):
+                    binned = True
+            else:
+                break
+
+        if binned:
+            merge_binned_CellsNP_csv(output_file_paths, output_path)
+        else:
+            merge_CellsNP_csv(output_file_paths, output_path)
 
 # Function to merge the dose to medium csv files from parallel runs of the TOPAS_CellsNP simulations
-def merge_CellsNP_csv(output_file_paths, output_path, append=False):
+def merge_binned_CellsNP_csv(output_file_paths, output_path):
+
+    os.makedirs(output_path, exist_ok=True)
+    # Merge EnergyDeposit or DoseToMedium files from different runs
+
+    cont = 0
+    lines_list = []
+    for file_path in output_file_paths:
+        # subfolder_name = f'run{run_number}'
+
+        # Read EnergyDepositToNucleus.csv file
+        # file_path = Path(f'{folder_path}/{subfolder_name}/{filename}').absolute()
+        path = os.path.dirname(file_path)
+        run_number = path.split('run')[-1]
+        filename = os.path.basename(file_path)
+
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+
+        # Extract the data from the last line
+        comment_lines = []
+        data_lines = []
+        statistics_labels = []
+        if len(lines) > 0:
+            for line in lines:
+                if line.startswith('#'):
+                    comment_lines.append(line)
+                else:
+                    data_lines.append(line)
+            data_line = lines[-1]
+
+            # Parse the metadata (comment lines starting with #)
+            for line in comment_lines:
+                if ' Sum ' in line:
+                    statistics_labels = [label.strip() for label in line.split(':')[1].split()]
+                    n_columns = len(statistics_labels)
+
+            # Parse the data row into a list of floats
+            data_values = np.array(data_line.strip().split(','), dtype=float)
+            data = data_values.reshape((-1, n_columns))
+            # Create a DataFrame and assign column names
+            df = pd.DataFrame(data, columns=statistics_labels)
+            if cont==0:
+                df_merge = df.copy()
+            else:
+                for label in statistics_labels:
+                    if label in "Sum  Count_in_Bin   Second_Moment   Histories_with_Scorer_Active":
+                        df_merge[label] += df[label]
+
+
+            cont = cont + 1
+
+    df_merge = df_merge.astype('float64')
+    if ('Sum' in statistics_labels) and ('Histories_with_Scorer_Active'):
+        df_merge['Mean'] = df_merge['Sum'] / df_merge['Histories_with_Scorer_Active']
+        df_merge['Variance'] = (df_merge['Second_Moment'] - df_merge['Sum'] ** 2 / df_merge['Histories_with_Scorer_Active']) / df_merge['Histories_with_Scorer_Active']
+        df_merge['Variance'] = np.maximum(df_merge['Variance'], 0)  # Clamp negative variance to 0
+        df_merge['Standard_Deviation'] = np.sqrt(df_merge['Variance'])
+
+    # Flatten the DataFrame and join elements into a single CSV line
+    csv_line = ', '.join(map(str, df_merge[statistics_labels].to_numpy().flatten()))
+    lines_list.append(csv_line)
+
+    # Write the combined results to a new output file
+    if '_part' in filename:
+        outputfilename = remove_part_suffix(filename)
+    else:
+        outputfilename = f'combined_{filename}'
+    with open(os.path.join(output_path, outputfilename), "w") as f:
+        for line in comment_lines:
+            f.write(line)
+        f.write(f"{csv_line}\n")
+
+    print('')
+    print(f'File {filename:}')
+    print(f'Number of results merged: {cont} out of {len(output_file_paths)}')
+    print('')
+
+def merge_CellsNP_csv(output_file_paths, output_path, append=True):
 
     os.makedirs(output_path, exist_ok=True)
 

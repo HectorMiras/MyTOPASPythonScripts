@@ -1,4 +1,4 @@
-from topas_csv_files_manager import merge_CellsNP_csv, collect_np_number
+from topas_csv_files_manager import collect_np_number, merge_TOPAS_csv
 from files_and_directory_manager import get_outputfile_paths
 from phsp_manager import merge_phsp_files, merge_header_files
 import json
@@ -9,8 +9,8 @@ import glob
 
 sim_path = sys.argv[1]
 sim_config_file = sys.argv[2]
-#sim_path = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/azure_batch_files/simulationfiles/nodes_output"
-#sim_config_file = "/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/azure_batch_files/simconfig.json"
+#sim_path = "/home/hector/mytopassimulations/MGHsimulations/tests/merge_binned_outputs/"
+#sim_config_file = "/home/hector/mytopassimulations/MGHsimulations/tests/merge_binned_outputs/simconfig.json"
 
 print(f'Simulation path: {sim_path}')
 print(f'Config file: {sim_config_file}')
@@ -35,7 +35,7 @@ for file_pattern in file_patterns:
         if len(filtered_paths) > 0:
             output_dir = str(Path(filtered_paths[0]).parent)
             if filtered_paths[0].suffix == ".csv":
-                merge_CellsNP_csv(output_file_paths=filtered_paths, output_path=output_dir, append=True)
+                merge_TOPAS_csv(output_file_paths=filtered_paths, output_path=output_dir)
             if (filtered_paths[0].suffix == ".phsp") or (filtered_paths[0].suffix == ".header"):
                 phsp_files = [f for f in filtered_paths if f.suffix == ".phsp"]
                 merge_phsp_files(phsp_files, output_dir)
@@ -51,7 +51,7 @@ for file_pattern in file_patterns:
         if ('np_number' in str(filtered_paths[0])):
             collect_np_number(output_file_paths=filtered_paths, output_path=output_dir)
         if filtered_paths[0].suffix == ".csv":
-            merge_CellsNP_csv(output_file_paths=filtered_paths, output_path=output_dir, append=True)
+            merge_TOPAS_csv(output_file_paths=filtered_paths, output_path=output_dir)
         if (filtered_paths[0].suffix == ".phsp") or (filtered_paths[0].suffix == ".header"):
             phsp_files = [f for f in filtered_paths if f.suffix == ".phsp"]
             merge_phsp_files(phsp_files, output_dir)
