@@ -1,0 +1,6 @@
+# TOPAS Version: 4.0
+# Parameter File: Phase3_dnaDamage.txt
+# Results for scorer: DoseNucleus_Ph3
+# Scored in component: Nucleus
+# DoseToMedium ( Gy ) : Sum   Mean   Count_in_Bin   Second_Moment   Variance   Standard_Deviation   Histories_with_Scorer_Active   
+0.04113670438528061, 9.741340261607871e-07, 19, 0.0001997804056758584, 4.730993787909879e-09, 6.87822199984115e-05, 42229

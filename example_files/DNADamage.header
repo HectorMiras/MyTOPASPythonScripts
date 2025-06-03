@@ -1,0 +1,38 @@
+Number of Original Histories: 0
+Number of Scored Entries: 10
+
+Columns of data are as follows:
+ 1: Energy_imparted_per_event [keV]
+ 2: Dose_per_event_Gy
+ 3: DSB/Gy/Gbp
+ 4: SSB/Gy/Gbp
+ 5: SB/Gy/Gbp
+ 6: SSB+/Gy/Gbp
+ 7: DSB+/Gy/Gbp
+ 8: MoreComplexDamage/Gy/Gbp
+ 9: BD/Gy/Gbp
+10: DSBs
+11: DSBs_Direct
+12: DSBs_Indirect
+13: DSBs_Hybrid
+14: DSBs_Direct_WithOneQuasiDirect
+15: DSBs_Direct_WithBothQuasiDirect
+16: DSBs_Hybrid_WithOneQuasiDirect
+17: SSBs
+18: SSBs_Direct
+19: SSBs_QuasiDirect
+20: SSBs_Indirect
+21: SBs
+22: SBs_Direct
+23: SBs_QuasiDirect
+24: SBs_Indirect
+25: SSB+s
+26: DSB+s
+27: More complex damages
+28: BDs
+29: BDs_Direct
+30: BDs_QuasiDirect
+31: BDs_Indirect
+32: Foci_150nm
+33: Foci_500nm
+

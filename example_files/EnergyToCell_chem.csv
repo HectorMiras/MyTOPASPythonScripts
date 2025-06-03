@@ -1,0 +1,7 @@
+# TOPAS Version: 4.0
+# Parameter File: Phase2_Cell_chemistry.txt
+# Results for scorer: EnergyToCell
+# Filtered by: OnlyIncludeIfInMaterial = 1 "G4_WATER"
+# Scored in component: Cell
+# EnergyDeposit ( MeV ) : Sum   Mean   Count_in_Bin   Second_Moment   Variance   Standard_Deviation   Histories_with_Scorer_Active   
+0.1887248456478119, 2.324598468301187e-06, 33, 0.00192562884367683, 2.37190225248116e-08, 0.0001540098130795944, 81186

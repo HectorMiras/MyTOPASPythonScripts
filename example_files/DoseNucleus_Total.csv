@@ -1,0 +1,6 @@
+# TOPAS Version: 4.0
+# Parameter File: Phase2_Cell.txt
+# Results for scorer: DoseNucleus_Total
+# Scored in component: nucleus
+# DoseToMedium ( Gy ) : Sum   Mean   Count_in_Bin   Second_Moment   Variance   Standard_Deviation   Histories_with_Scorer_Active   
+0.03621034324169159, 4.460170942031676e-07, 14, 0.0002275199412393247, 2.802487420574301e-09, 5.293852491876121e-05, 81186
