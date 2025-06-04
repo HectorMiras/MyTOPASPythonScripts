@@ -2,7 +2,107 @@ import os
 from files_and_directory_manager import remove_part_suffix
 import numpy as np
 import pandas as pd
+from typing import Tuple, Dict, Optional, Union
+from topas_statistics import TOPASStatistics
 
+
+def process_csv_file(file_path: str, return_stats_object: bool = False) -> Union[Tuple[float, int], Optional[TOPASStatistics]]:
+    """Process TOPAS CSV files and extract statistics
+    
+    Args:
+        file_path: Path to the CSV file
+        return_stats_object: If True, return a TOPASStatistics object instead of tuple
+        
+    Returns:
+        If return_stats_object is False:
+            tuple: (float, int) - The sum value and number of histories
+        If return_stats_object is True:
+            TOPASStatistics object or None if processing fails
+            
+    Example:
+        >>> stats = process_csv_file("dose.csv", return_stats_object=True)
+        >>> if stats:
+        ...     print(f"Total dose: {stats.sum_value:.2e} {stats.units}")
+        ...     print(f"Mean dose per history: {stats.mean:.2e} {stats.units}/hist")
+    """
+    try:
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+            
+        # Find the header line with column information and the data line
+        header_line = None
+        data_line = None
+        measurement_type = None
+        units = None
+        
+        for line in lines:
+            if line.startswith('# DoseToMedium') or line.startswith('# EnergyDeposit'):
+                header_line = line
+                if 'DoseToMedium' in line:
+                    measurement_type = 'DoseToMedium'
+                    units = line.split('(')[1].split(')')[0].strip()
+                elif 'EnergyDeposit' in line:
+                    measurement_type = 'EnergyDeposit'
+                    units = line.split('(')[1].split(')')[0].strip()
+            elif not line.startswith('#'):
+                data_line = line
+                break
+                
+        if data_line and header_line:
+            # Parse column names from header
+            column_names = header_line.split(':')[1].strip().split()
+            
+            # Parse data values
+            values = [float(v.strip()) for v in data_line.strip().split(',')]
+            
+            # Create a dictionary of statistics
+            stats = {}
+            for name, value in zip(column_names, values):
+                stats[name] = value
+                
+            if return_stats_object:
+                return TOPASStatistics.from_dict(stats, measurement_type, units)
+            else:
+                # For backward compatibility, return sum and histories
+                return (stats.get('Sum', 0), 
+                       stats.get('Histories_with_Scorer_Active', 0))
+                
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+    
+    if return_stats_object:
+        return None
+    return 0, 0
+
+def process_original_hists(file_path):
+    """Extract the last value from the specified CSV file for Original_hists
+    
+    Parameters:
+        file_path (str): Path to the CSV file
+        
+    Returns:
+        int: The number of histories
+    """
+    try:
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+            
+        # Find the data line (last non-comment line)
+        data_line = None
+        for line in lines:
+            if not line.startswith('#'):
+                data_line = line
+                break
+                
+        if data_line:
+            # Split by comma and get the last value
+            values = data_line.strip().split(',')
+            if len(values) >= 1:
+                return int(values[-1])
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+    
+    return 0
 
 
 def collect_np_number(output_file_paths, output_path):

@@ -9,6 +9,32 @@ from files_and_directory_manager import remove_part_suffix
 #from mpl_toolkits.mplot3d import Axes3D
 
 
+def count_phsp_particles(file_base):
+    """Count particles in phase space file
+    
+    Parameters:
+        file_base (str): The base file path/name without extension.
+                        The function expects to find file_base+'.header'.
+    
+    Returns:
+        tuple: (int, int) - The number of scored particles and 0 (for compatibility with other functions)
+    """
+    try:
+        header_file = file_base + ".header"
+        with open(header_file, 'r') as f:
+            lines = f.readlines()
+            
+        for line in lines:
+            if "Number of Scored Particles:" in line:
+                parts = line.strip().split(":")
+                if len(parts) >= 2:
+                    return int(parts[1].strip()), 0
+    except Exception as e:
+        print(f"Error processing phase space file {file_base}: {e}")
+    
+    return 0, 0
+
+
 def np_stats(folder, phsp_file):
     # Dictionary to store the count of electrons for each nano-particle index
     count_per_nano_particle = {}
