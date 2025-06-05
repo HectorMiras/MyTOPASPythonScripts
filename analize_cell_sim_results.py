@@ -178,3 +178,137 @@ def multirun_processing(maxruns, filebase):
         del Cell_results['DNADamage']['frames']
     
     return Cell_results
+
+def multicell_processing(maxcells, maxruns, filebase):
+    """Process multiple cells each containing multiple TOPAS simulation runs and aggregate results.
+    
+    Args:
+        maxcells (int): Number of cell directories to process
+        maxruns (int): Number of runs to process per cell
+        filebase (str): Base directory containing the cell directories
+        
+    Returns:
+        list: List of dictionaries containing aggregated results for each cell
+    """
+    # Generate cell directories
+    cell_filebases = [os.path.join(filebase, f'cell{i+1}/') for i in range(maxcells)]
+    
+    # List to store results for each cell
+    all_cell_results = []
+    
+    # Process runs for each cell
+    for cell_idx, cell_base in enumerate(cell_filebases):
+        print(f"\nProcessing cell {cell_idx+1}/{maxcells}...")
+        try:
+            # Call multirun_processing for each cell
+            cell_results = multirun_processing(maxruns, cell_base)
+            all_cell_results.append(cell_results)
+        except Exception as e:
+            print(f"Error processing cell {cell_idx+1}: {e}")
+            continue
+            
+    print("\nAll cells processed!")
+    return all_cell_results
+
+def process_multicell_results(all_cell_results):
+    """Process and aggregate results from multiple cells to compute statistics.
+    
+    Args:
+        all_cell_results (list): List of Cell_results dictionaries from multicell_processing
+        
+    Returns:
+        dict: Dictionary containing mean and standard deviation for each quantity across cells
+    """
+    # Initialize aggregated results structure
+    aggregated_results = {
+        'Original_hists': {'mean': 0.0, 'std_dev': 0.0},
+        'DoseToNucl_ph2': {'mean': 0.0, 'std_dev': 0.0},
+        'DoseToNucl_ph3': {'mean': 0.0, 'std_dev': 0.0},
+        'Ecell': {'mean': 0.0, 'std_dev': 0.0},
+        'NP_el': {'mean': 0.0, 'std_dev': 0.0},
+        'GValues': {},
+        'DNADamage': {
+            'totals': {}
+        }
+    }
+    
+    # Get number of cells
+    n_cells = len(all_cell_results)
+    if n_cells == 0:
+        return aggregated_results
+        
+    # First, collect all values for each quantity
+    collected_values = {
+        'Original_hists': [],
+        'DoseToNucl_ph2': [],
+        'DoseToNucl_ph3': [],
+        'Ecell': [],
+        'NP_el': [],
+        'GValues': {},
+        'DNADamage': {
+            'totals': {}
+        }
+    }
+    
+    # Initialize GValues species list from first cell
+    species_list = list(all_cell_results[0]['GValues'].keys())
+    for species in species_list:
+        collected_values['GValues'][species] = {'values': [], 'errors': []}
+        aggregated_results['GValues'][species] = {'mean': 0.0, 'std_dev': 0.0, 'error': 0.0}
+    
+    # Initialize DNA damage columns from first cell
+    damage_cols = all_cell_results[0]['DNADamage']['totals'].keys()
+    for col in damage_cols:
+        collected_values['DNADamage']['totals'][col] = []
+        aggregated_results['DNADamage']['totals'][col] = {'mean': 0.0, 'std_dev': 0.0}
+    
+    # Collect values from each cell
+    for cell_results in all_cell_results:
+        # Simple quantities
+        for key in ['Original_hists', 'DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell', 'NP_el']:
+            collected_values[key].append(cell_results[key]['value'])
+        
+        # G-Values
+        for species in species_list:
+            collected_values['GValues'][species]['values'].append(cell_results['GValues'][species]['value'])
+            collected_values['GValues'][species]['errors'].append(cell_results['GValues'][species]['error'])
+        
+        # DNA Damage
+        for col in damage_cols:
+            if col in cell_results['DNADamage']['totals']:
+                value = cell_results['DNADamage']['totals'][col]
+                # Handle nested energy dictionary
+                if isinstance(value, dict):
+                    value = value['total_MeV']
+                collected_values['DNADamage']['totals'][col].append(value)
+    
+    # Calculate statistics
+    # Simple quantities
+    for key in ['Original_hists', 'DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell', 'NP_el']:
+        values = np.array(collected_values[key])
+        aggregated_results[key]['mean'] = np.mean(values)
+        aggregated_results[key]['std_dev'] = np.std(values, ddof=1) if len(values) > 1 else 0
+    
+    # G-Values
+    for species in species_list:
+        values = np.array(collected_values['GValues'][species]['values'])
+        errors = np.array(collected_values['GValues'][species]['errors'])
+        
+        # Calculate mean and standard deviation across cells
+        mean_value = np.mean(values)
+        std_dev = np.std(values, ddof=1) if len(values) > 1 else 0
+        
+        # Propagate errors
+        total_error = np.sqrt(np.mean(errors**2) + std_dev**2)
+        
+        aggregated_results['GValues'][species]['mean'] = mean_value
+        aggregated_results['GValues'][species]['std_dev'] = std_dev
+        aggregated_results['GValues'][species]['error'] = total_error
+    
+    # DNA Damage
+    for col in damage_cols:
+        values = np.array(collected_values['DNADamage']['totals'][col])
+        aggregated_results['DNADamage']['totals'][col]['mean'] = np.mean(values)
+        aggregated_results['DNADamage']['totals'][col]['std_dev'] = np.std(values, ddof=1) if len(values) > 1 else 0
+    
+    return aggregated_results
