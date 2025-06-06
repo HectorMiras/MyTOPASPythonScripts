@@ -122,8 +122,8 @@ def multirun_processing(maxruns, filebase):
             values = np.array(Cell_results[key]['values'])
             stats = Cell_results[key]['stats']
             
-            # Calculate mean and error
-            Cell_results[key]['value'] = stats.mean
+            # Calculate sum and error
+            Cell_results[key]['value'] = stats.sum_value
             std_error = stats.standard_deviation / np.sqrt(stats.histories_with_scorer_active)
             run_variation = np.std(values) if len(values) > 1 else 0
             Cell_results[key]['error'] = 2 * np.sqrt(std_error**2 + run_variation**2)  # 2σ confidence
@@ -283,11 +283,13 @@ def process_multicell_results(all_cell_results):
                 collected_values['DNADamage']['totals'][col].append(value)
     
     # Calculate statistics
-    # Simple quantities
-    for key in ['Original_hists', 'DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell', 'NP_el']:
-        values = np.array(collected_values[key])
-        aggregated_results[key]['mean'] = np.mean(values)
-        aggregated_results[key]['std_dev'] = np.std(values, ddof=1) if len(values) > 1 else 0
+    # Take mean of the per-cell sums for all quantities
+    for key in ['DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell', 'Original_hists', 'NP_el']:
+        values = np.array(collected_values[key])  # These values are already sums from multirun_processing
+        aggregated_results[key]['mean'] = np.mean(values)  # Take mean across cells
+        # Calculate standard deviation across cells
+        if len(values) > 1:
+            aggregated_results[key]['std_dev'] = np.std(values, ddof=1)
     
     # G-Values
     for species in species_list:
@@ -308,7 +310,119 @@ def process_multicell_results(all_cell_results):
     # DNA Damage
     for col in damage_cols:
         values = np.array(collected_values['DNADamage']['totals'][col])
-        aggregated_results['DNADamage']['totals'][col]['mean'] = np.mean(values)
-        aggregated_results['DNADamage']['totals'][col]['std_dev'] = np.std(values, ddof=1) if len(values) > 1 else 0
+        # For energy or count values, use sum instead of mean
+        # Handle different quantities appropriately:
+        # - Sum absolute quantities (energy, counts of damage)
+        # - Average relative quantities (ratios, densities)
+        if col == 'energy' or col in ['DSBs', 'SSBs', 'SBs', 'BDs', 'total_events']:
+            # These values are already sums from multirun_processing, take their mean
+            aggregated_results['DNADamage']['totals'][col]['mean'] = np.mean(values)
+            if len(values) > 1:
+                # Standard deviation across cells
+                aggregated_results['DNADamage']['totals'][col]['std_dev'] = np.std(values, ddof=1)
+            else:
+                aggregated_results['DNADamage']['totals'][col]['std_dev'] = 0
+        else:
+            # Average relative quantities (like ratios)
+            aggregated_results['DNADamage']['totals'][col]['mean'] = np.mean(values)
+            aggregated_results['DNADamage']['totals'][col]['std_dev'] = np.std(values, ddof=1) if len(values) > 1 else 0
     
     return aggregated_results
+
+def compute_enhancement_ratios(results_with_np, results_without_np):
+    """Compute enhancement ratios between two multicell analysis results.
+    
+    Args:
+        results_with_np (dict): Aggregated results from multicell analysis with nanoparticles
+        results_without_np (dict): Aggregated results from multicell analysis without nanoparticles
+        
+    Returns:
+        dict: Enhancement ratios and their uncertainties for all quantities
+    """
+    enhancement_results = {
+        'simple_quantities': {},
+        'GValues': {},
+        'DNADamage': {
+            'totals': {}
+        }
+    }
+    
+    # Process simple quantities first
+    for key in ['DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell', 'Original_hists', 'NP_el']:
+        if key in results_with_np and key in results_without_np:
+            value_with = results_with_np[key]['mean']
+            value_without = results_without_np[key]['mean']
+            
+            # Skip if reference value is zero
+            if value_without == 0:
+                continue
+                
+            # Calculate enhancement ratio
+            ratio = value_with / value_without
+            
+            # Error propagation for ratio (standard formula for f = A/B)
+            # σ_f/f = sqrt((σ_A/A)^2 + (σ_B/B)^2)
+            rel_error_with = results_with_np[key]['std_dev'] / value_with if value_with != 0 else 0
+            rel_error_without = results_without_np[key]['std_dev'] / value_without
+            ratio_error = ratio * np.sqrt(rel_error_with**2 + rel_error_without**2)
+            
+            enhancement_results['simple_quantities'][key] = {
+                'ratio': ratio,
+                'uncertainty': ratio_error
+            }
+    
+    # Process G-Values
+    for species in results_with_np['GValues'].keys():
+        if species in results_without_np['GValues']:
+            value_with = results_with_np['GValues'][species]['mean']
+            value_without = results_without_np['GValues'][species]['mean']
+            
+            if value_without == 0:
+                continue
+                
+            ratio = value_with / value_without
+            
+            # For G-Values we can use the total error that includes both statistical and systematic uncertainties
+            error_with = results_with_np['GValues'][species]['error']
+            error_without = results_without_np['GValues'][species]['error']
+            
+            rel_error_with = error_with / value_with if value_with != 0 else 0
+            rel_error_without = error_without / value_without
+            ratio_error = ratio * np.sqrt(rel_error_with**2 + rel_error_without**2)
+            
+            enhancement_results['GValues'][species] = {
+                'ratio': ratio,
+                'uncertainty': ratio_error
+            }
+    
+    # Process DNA damage
+    for col in results_with_np['DNADamage']['totals'].keys():
+        if col in results_without_np['DNADamage']['totals']:
+            value_with = results_with_np['DNADamage']['totals'][col]['mean']
+            value_without = results_without_np['DNADamage']['totals'][col]['mean']
+            
+            # Handle nested energy dictionary
+            if isinstance(value_with, dict):
+                value_with = value_with['total_MeV']
+            if isinstance(value_without, dict):
+                value_without = value_without['total_MeV']
+            
+            if value_without == 0:
+                continue
+                
+            ratio = value_with / value_without
+            
+            # Error propagation
+            error_with = results_with_np['DNADamage']['totals'][col]['std_dev']
+            error_without = results_without_np['DNADamage']['totals'][col]['std_dev']
+            
+            rel_error_with = error_with / value_with if value_with != 0 else 0
+            rel_error_without = error_without / value_without
+            ratio_error = ratio * np.sqrt(rel_error_with**2 + rel_error_without**2)
+            
+            enhancement_results['DNADamage']['totals'][col] = {
+                'ratio': ratio,
+                'uncertainty': ratio_error
+            }
+    
+    return enhancement_results
