@@ -8,6 +8,13 @@ Script to show how to use the repair module to simulate variable dose rate funct
 @author: alejandrobertolet
 """
 
+import os, sys
+
+# Add both the parent directory and the ChronoDNARepair directory to the Python path
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+chrono_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../ChronoDNARepair'))
+sys.path.insert(0, parent_dir)  # Add parent dir first
+sys.path.insert(0, chrono_dir)  # Add ChronoDNARepair dir second
 from ChronoDNARepair.repair.running import Simulator
 
 ##############################
@@ -43,8 +50,10 @@ irradiationTime = 24 * 3600 # 24 hours
 # READ DAMAGE #
 ###############
 
-damagepath = './damageFromTopas-nBio/xray-250keV/'
-maximumDose = 10.0 # Gy # This is a limit that is not used if the accumulated dose does not reach it
+# Set base path for SDD files with damage induced and dose to be loaded
+#damagepath = './damageFromTopas-nBio/xray-250keV/'
+damagepath = '/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/only_results_CellColony-med0-cell0/cell2/'
+maximumDose = 2.0 # Gy # This is a limit that is not used if the accumulated dose does not reach it
 
 ########################
 # INITIALIZE SIMULATOR #

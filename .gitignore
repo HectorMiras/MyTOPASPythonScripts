@@ -5,3 +5,6 @@
 /__pycache__/
 /.idea/
 /venv/
+/ChronoRepair-HM/temp/
+**/temp/
+/ChronoRepair-HM/examples/damageFromTopas-nBio/

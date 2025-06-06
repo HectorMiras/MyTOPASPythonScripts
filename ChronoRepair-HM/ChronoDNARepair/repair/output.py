@@ -6,6 +6,7 @@ Created on 11/8/22 2:01 PM
 @author: alejandrobertolet
 """
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -165,9 +166,15 @@ class AverageTimeCurveOverRuns:
         ax.grid()
         return fig, ax
 
-    def WriteCSV(self, resultsFolder='./'):
+    def WriteCSV(self, resultsFolder=None):
+        if resultsFolder is None:
+            # Get the examples/temp directory location
+            examples_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..', 'examples'))
+            resultsFolder = os.path.join(examples_dir, 'temp')
+            os.makedirs(resultsFolder, exist_ok=True)
+
         df = pd.DataFrame({"Time" : self.times, "Avg-" + self.runlist[0].ylabel : self.avgyvalues, "Var-" + self.runlist[0].ylabel : self.varyvalues})
-        df.to_csv(resultsFolder + self.runlist[0].ylabel + '.csv', index=False)
+        df.to_csv(os.path.join(resultsFolder, self.runlist[0].ylabel + '.csv'), index=False)
 
     @property
     def NRuns(self):
@@ -226,9 +233,15 @@ class TimeCurveForSingleRun:
         ax.grid()
         return fig, ax
 
-    def WriteCSV(self, resultsFolder='./', scaledToInitialValue=True):
+    def WriteCSV(self, resultsFolder=None, scaledToInitialValue=True):
+        if resultsFolder is None:
+            # Get the root temp directory location
+            repo_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../..'))
+            resultsFolder = os.path.join(repo_root, 'temp')
+            os.makedirs(resultsFolder, exist_ok=True)
+
         if scaledToInitialValue:
             df = pd.DataFrame({"Time" : self.times, self.ylabel : self.yvalues / self.yvalues[0], "Initial number" : self.yvalues[0]})
         else:
             df = pd.DataFrame({"Time": self.times, self.ylabel: self.yvalues})
-        df.to_csv(resultsFolder + self.ylabel + '.csv', index=False)
+        df.to_csv(os.path.join(resultsFolder, self.ylabel + '.csv'), index=False)

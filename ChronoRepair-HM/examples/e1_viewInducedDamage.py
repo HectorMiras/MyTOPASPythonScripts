@@ -10,8 +10,13 @@ This script shows how to use the DamageToDNA class to read SDD files and visuali
 
 import os, random
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from ChronoDNARepair.induction.damage import DamageToDNA
+
+# Add both the parent directory and the ChronoDNARepair directory to the Python path
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+chrono_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../ChronoDNARepair'))
+sys.path.insert(0, parent_dir)  # Add parent dir first
+sys.path.insert(0, chrono_dir)  # Add ChronoDNARepair dir second
+from induction.damage import DamageToDNA  # Now Python will find it in ChronoDNARepair/induction/damage.py
 
 #####################################
 # READING THE DAMAGE FROM SDD FILES #
@@ -20,7 +25,7 @@ from ChronoDNARepair.induction.damage import DamageToDNA
 # Set base path for SDD files with damage induced and dose to be loaded
 #damagepath = './damageFromTopas-nBio/xray-250keV/'
 damagepath = '/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/only_results_CellColony-med0-cell0/cell2/'
-dose = -1  # Gy
+dose = 2.0  # Gy
 
 # Define colormap for visualization
 MyColorMap = 'viridis'
@@ -77,14 +82,18 @@ damage.populateDamages(getVideo=False, stopAtDose=dose, stopAtTime=0.0, recalcul
 damage.printDamageCount()
 # Show complexity distribution
 damage.getComplexityDistribution(plot=True)
+# Create temp directory if it doesn't exist
+temp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'temp')
+os.makedirs(temp_dir, exist_ok=True)
+
 # Produce images of damage. Show to see it instead of saving it. Onlyz in 2D to see only z-projection
-damage.produce3DImage(show=False, saveFile="xray250_3D.png", title='X-ray 250 keV - Dose: ' + str(dose) + ' Gy - DSB: ' + str(damage.numDSB))
-damage.produce2DImages(saveFile="xray250_2D.png", onlyz=True, title='X-ray 250 keV - Dose: ' + str(dose) + ' Gy - DSB: ' + str(damage.numDSB))
+damage.produce3DImage(show=False, saveFile=os.path.join(temp_dir, "xray250_3D.png"), title='X-ray 250 keV - Dose: ' + str(dose) + ' Gy - DSB: ' + str(damage.numDSB))
+damage.produce2DImages(saveFile=os.path.join(temp_dir, "xray250_2D.png"), onlyz=True, title='X-ray 250 keV - Dose: ' + str(dose) + ' Gy - DSB: ' + str(damage.numDSB))
 # Get dose-response curves. 'BD' for base damage, 'SSB' for single strand breaks, 'DSB' for double strand breaks
 # To see this, recalculatePerEachTrack has to be True (takes longer as the damage is recomputed track by track as the
 # dose increases). Skip recal
 damage.getDoseResponseCurve(q='DSB')
 
 # Joining damage in a single SDD file
-sddfile = 'test.sdd'
+sddfile = os.path.join(temp_dir, 'test.sdd')
 damage.writeSDD(sddfile)

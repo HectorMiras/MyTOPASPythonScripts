@@ -8,6 +8,13 @@ This script shows how to simulate repair from an instantaneous exposure to a giv
 @author: alejandrobertolet
 """
 
+import os, sys
+
+# Add both the parent directory and the ChronoDNARepair directory to the Python path
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+chrono_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../ChronoDNARepair'))
+sys.path.insert(0, parent_dir)  # Add parent dir first
+sys.path.insert(0, chrono_dir)  # Add ChronoDNARepair dir second
 from ChronoDNARepair.repair.running import Simulator
 
 ##############################

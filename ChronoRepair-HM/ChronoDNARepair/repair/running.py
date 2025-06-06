@@ -67,6 +67,25 @@ class Simulator:
         self.avgMisrepairedDSBOverTime = self.runManager.runoutputMisrepairedDSB
         self.celloutput = self.runManager.cellcultureoutput
 
+    def _get_numbered_dirs(self, path):
+        """Get all numbered directories regardless of prefix"""
+        numbered_dirs = []
+        try:
+            for d in os.listdir(path):
+                full_path = os.path.join(path, d)
+                if os.path.isdir(full_path):
+                    # Extract number from directory name using last digits
+                    number = ''.join(filter(str.isdigit, d))
+                    if number:  # Only add if there are digits in the name
+                        numbered_dirs.append((int(number), d))
+        except OSError:
+            print(f"Error accessing directory: {path}")
+            return []
+        
+        # Sort by the numeric value
+        numbered_dirs.sort(key=lambda x: x[0])
+        return [d[1] for d in numbered_dirs]  # Return only directory names
+
     def ReadDamage(self, basepath, maxDose=2.0, version='2.0', recalculatePerEachTrack=False):
         damage = DamageToDNA(messages=self.messages)
         npaths = 1
@@ -83,17 +102,19 @@ class Simulator:
             maxDose = [maxDose]
         totalaccumulateddose = 0
         for ib, bpath in enumerate(basepath):
-            nfiles = len(os.listdir(bpath))
             # Section to get what directories actually contains both dose and SDD. Disregard others!
             listOfAvailableDirs = []
-            for j in range(nfiles):
-                dir_name = str(j)
-                newpath = os.path.join(bpath, dir_name)
-                if os.path.isdir(newpath):
-                    files = os.listdir(newpath)
-                    if 'DNADamage_sdd.txt' in files and 'DNADamage.phsp' in files:
-                        if os.path.getsize(os.path.join(newpath, 'DNADamage_sdd.txt')) > 0:  # only those with actual data
-                            listOfAvailableDirs.append(j)
+            for dir_name in self._get_numbered_dirs(bpath):
+                newpath = os.path.join(bpath, dir_name) 
+                files = os.listdir(newpath)
+                if 'DNADamage_sdd.txt' in files and 'DNADamage.phsp' in files:
+                    if os.path.getsize(os.path.join(newpath, 'DNADamage_sdd.txt')) > 0:  # only those with actual data
+                        listOfAvailableDirs.append(dir_name)
+        
+            if not listOfAvailableDirs:
+                raise ValueError(f"No valid damage files found in directory {bpath}")
+
+            accumulatedose = 0  # Initialize before the loop
             neworder = random.sample(listOfAvailableDirs, len(listOfAvailableDirs))
             for i, e in enumerate(neworder):
                 accumulatedose = damage.accumulateDose - totalaccumulateddose
@@ -102,9 +123,10 @@ class Simulator:
                 time = self._getTimeForDose(accumulatedose)
                 if 0 < self.irradiationTime < time:
                     time = 1e20
-                path = os.path.join(bpath, str(e))
+                path = os.path.join(bpath, e)
                 damage.readSDDAndDose(os.path.join(path, ''), version=version, particleTime=time, lesionTime=time)
             totalaccumulateddose += accumulatedose
+        
         damage.populateDamages(getVideo=False, stopAtDose=-1, stopAtTime=0, recalculatePerEachTrack=recalculatePerEachTrack)
         self.runManager.damage = damage
 
@@ -554,11 +576,13 @@ class RunManager:
         self.cellcultureoutput.AddCell(self.celloutput)
 
     def _storeImages(self):
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        folder_path = os.path.join(script_dir, 'images2D')
+        # Get the root temp directory location
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../..'))
+        temp_dir = os.path.join(repo_root, 'temp')
+        folder_path = os.path.join(temp_dir, 'images2D')
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
-        folder_path_3D = os.path.join(script_dir, 'images3D')
+        folder_path_3D = os.path.join(temp_dir, 'images3D')
         if not os.path.exists(folder_path_3D):
             os.makedirs(folder_path_3D)
         time = str(np.round(self.clock.CurrentTime / 3600, 2))

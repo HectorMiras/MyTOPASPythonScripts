@@ -8,7 +8,12 @@ This script shows how to use the bootstrapping method to see the dose response c
 @author: alejandrobertolet
 """
 
-import os
+import os, sys
+# Add both the parent directory and the ChronoDNARepair directory to the Python path
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+chrono_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../ChronoDNARepair'))
+sys.path.insert(0, parent_dir)  # Add parent dir first
+sys.path.insert(0, chrono_dir)  # Add ChronoDNARepair dir second
 import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
@@ -157,5 +162,10 @@ ax[1, 1].grid()
 ax[1, 1].set_xlim([0, maxDose * 1.01])
 ax[1, 1].set_ylim([0, None])
 
+# Create temp directory if it doesn't exist
+temp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'temp')
+os.makedirs(temp_dir, exist_ok=True)
+
 plt.tight_layout()
-plt.show()
+plt.savefig(os.path.join(temp_dir, 'dose_response_curves.png'))
+plt.close()
