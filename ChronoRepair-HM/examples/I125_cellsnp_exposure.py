@@ -15,7 +15,9 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 chrono_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../ChronoDNARepair'))
 sys.path.insert(0, parent_dir)  # Add parent dir first
 sys.path.insert(0, chrono_dir)  # Add ChronoDNARepair dir second
-from ChronoDNARepair.repair.running import Simulator
+
+# Import our custom simulator that handles cell/run directory structure
+from custom_simulator import CustomSimulator
 
 ##############################
 # SETUP OF REPAIR SIMULATION #
@@ -24,8 +26,8 @@ from ChronoDNARepair.repair.running import Simulator
 # Time options is a list with the initial time, final time and number of steps (or a list of custom time points as 4th arg)
 # Times need to be given in seconds
 initialTime = 0
-finalTime = 24 * 3600 # 24 hours
-nSteps = 24
+finalTime = 23 * 3600 # 23 hours
+nSteps = 23
 timeOptions = [initialTime, finalTime, nSteps]
 
 # Nucleus size in microns
@@ -42,18 +44,20 @@ nCells = 10
 
 # Dose rate function
 doseratefunction = 'exponential'
-initialDoseRate = 0.1/3600 # 0.1 Gy/h
-halfLife = 8 * 3600 # 8 hours
-irradiationTime = 24 * 3600 # 24 hours
+initialDoseRate = 0.13803/3600 #  Gy/h
+halfLife = (59.39*24) * 3600 #  59.39 days in seconds
+# irradiationTime indicates the maximum length of exposure, it has to be provided to the simulator, otherwise it
+# interprets instantaneous exposures
+irradiationTime = 23 * 3600 # 23 hours
 
 ###############
 # READ DAMAGE #
 ###############
 
 # Set base path for SDD files with damage induced and dose to be loaded
-damagepath = './damageFromTopas-nBio/xray-250keV/'
-#damagepath = '/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/only_results_CellColony-med0-cell0/cell2/'
-maximumDose = 1.0 # Gy # This is a limit that is not used if the accumulated dose does not reach it
+# This path should contain cell# directories, which in turn contain run# directories with damage files
+damagepath = '/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/only_results_CellColony-med1-cell1/'
+maximumDose = -1 # Gy # This is a limit that is not used if the accumulated dose does not reach it
 
 ########################
 # INITIALIZE SIMULATOR #
@@ -62,20 +66,34 @@ maximumDose = 1.0 # Gy # This is a limit that is not used if the accumulated dos
 # doseratefunctionargs is a list with the arguments of the dose rate function
 # irradiationTime indicates the maximum length of exposure, it has to be provided to the simulator, otherwise it
 # interprets instantaneous exposures
-sim = Simulator(timeOptions=timeOptions, diffusionmodel=diffusionModel, dsbmodel=dsbModel, ssbmodel=ssbModel, bdmodel=bdModel,
+sim = CustomSimulator(timeOptions=timeOptions, diffusionmodel=diffusionModel, dsbmodel=dsbModel, ssbmodel=ssbModel, bdmodel=bdModel,
                 nucleusMaxRadius=nucleusMaxRadius, doseratefunction=doseratefunction, doseratefunctionargs=[initialDoseRate, halfLife],
                 irradiationTime=irradiationTime)
-# Reads damage
-sim.ReadDamage(damagepath, maximumDose)
+# Note: We don't need to call ReadDamage explicitly for a single cell
+# because our custom Run method will handle reading damage from each cell directory
 
 ##################
 # RUN SIMULATION #
 ##################
+# This will use the custom Run method that reads damage from separate cell directories
+# rereadDamageForNewRuns=True causes the simulator to look for different cell directories
+# for each simulated cell, helping to represent cell-to-cell variation
 sim.Run(nCells, rereadDamageForNewRuns=True, basepath=damagepath, maxDose=maximumDose, verbose=1, getVideo=False)
 
-# Get and print output
+# Get and print DSB remaining output
 dsbOutput = sim.avgRemainingDSBOverTime
 times = dsbOutput.times
 avgDSBremaining = dsbOutput.avgyvalues
 for t in range(len(times)):
     print('Time: ', times[t], 'h, Fraction of DSB remaining: ', avgDSBremaining[t])
+
+# Calculate and report cell survival fraction
+celloutput = sim.celloutput
+surviving_cells = sum(1 for cell in celloutput.celllist if cell.Surviving)
+total_cells = len(celloutput.celllist)
+survival_fraction = surviving_cells / total_cells if total_cells > 0 else 0
+
+print("\n----- Cell Survival Results -----")
+print(f"Surviving cells: {surviving_cells}/{total_cells}")
+print(f"Survival fraction: {survival_fraction:.4f} ({surviving_cells/total_cells*100:.1f}%)")
+print("--------------------------------")
