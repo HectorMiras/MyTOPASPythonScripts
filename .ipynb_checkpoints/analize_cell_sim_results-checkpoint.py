@@ -81,7 +81,7 @@ def multirun_processing(maxruns, filebase):
                 # Process Original_hists
                 Cell_results[result_key]['value'] += process_original_hists(file_path)
             
-            elif 'DNADamage' not in result_key:
+            else:
                 # Process other CSV files (dose and energy)
                 stats = process_csv_file(file_path, return_stats_object=True)
                 if not stats:
@@ -364,5 +364,5 @@ def compute_enhancement_ratios(results_with_np, results_without_np):
                 'uncertainty': ratio_error
             }
     
-
+    
     return enhancement_results

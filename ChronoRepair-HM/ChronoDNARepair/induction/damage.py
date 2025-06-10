@@ -906,6 +906,30 @@ class DamageToDNA:
                 string += ", "
         return string
 
+    def getDamageCount(self):
+        """
+        Returns a dictionary with the damage counts that are printed in printDamageCount
+        """
+        damage_dict = {
+            'Dose': self.cumulativeDose,
+            'DSB': self.numDSB,
+            'DSB_Direct': self.numDSBDirect,
+            'DSB_Indirect': self.numDSBIndirect,
+            'DSB_Hybrid': self.numDSBHybrid,
+            'SSB': self.numSSB,
+            'SSB_Direct': self.numSSBDirect,
+            'SSB_Indirect': self.numSSBIndirect,
+            'SB': self.numSB,
+            'SB_Direct': self.numSBDirect,
+            'SB_Indirect': self.numSBIndirect,
+            'BD': self.numBD,
+            'BD_Direct': self.numBDDirect,
+            'BD_Indirect': self.numBDIndirect,
+            'DSB_positions': len(self.DSBPositions),
+            'Number_of_foci': self.getNumberOfFoci(0.5)
+        }
+        return damage_dict
+
     def printDamageCount(self):
         self.messages.append("Summary of damage"); print(self.messages[-1])
         self.messages.append("-----------------"); print(self.messages[-1])
@@ -1051,7 +1075,19 @@ class DamageToDNA:
             else:
                 plt.show()
             return fig, ax
-        return complexities, complexitydist
+        #else:
+            # Print complexity distribution when plot is False
+        #    print("\nComplexity Distribution:")
+        #    print("------------------------")
+        #    print("Complexity | " + ("Probability" if density else "Count"))
+        #    print("------------------------")
+        #    for i in range(len(complexities)):
+        #        print(f"{int(complexities[i]):9d} | {complexitydist[i]:.4f}")
+        #    print("------------------------")
+        
+        # Create a dictionary with complexities as keys and complexitydist as values
+        complexity_dict = {int(complexities[i]): complexitydist[i] for i in range(len(complexities))}
+        return complexity_dict
 
     def getNumberOfFoci(self, fociSize = 0.4):
         indexIsAvailable = []

@@ -25,7 +25,7 @@ from induction.damage import DamageToDNA  # Now Python will find it in ChronoDNA
 # Set base path for SDD files with damage induced and dose to be loaded
 #damagepath = './damageFromTopas-nBio/xray-250keV/'
 damagepath = '/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/only_results_CellColony-med0-cell0/cell2/'
-dose = 2.0  # Gy
+dose = -1  # Gy
 
 # Define colormap for visualization
 MyColorMap = 'viridis'
@@ -73,26 +73,27 @@ for i, e in enumerate(neworder):
 # Populate damage object with damage induced
 # Options: getVideo to see how damage is populated track by track (then recalculatePerEachTrack has to be True);
 # stopAtDose to get to certain dose; stopAtTime is only relevant when simulating repair or assigning times to damage
-damage.populateDamages(getVideo=False, stopAtDose=dose, stopAtTime=0.0, recalculatePerEachTrack=True)
+damage.populateDamages(getVideo=False, stopAtDose=dose, stopAtTime=0.0, recalculatePerEachTrack=False)
 
 ###############################
 # METHODS TO VISUALIZE DAMAGE #
 ###############################
 # Print damage count
+cell_damagecount = damage.getDamageCount()
 damage.printDamageCount()
 # Show complexity distribution
-damage.getComplexityDistribution(plot=True)
+cell_complexitycount = damage.getComplexityDistribution(plot=False)
 # Create temp directory if it doesn't exist
 temp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'temp')
 os.makedirs(temp_dir, exist_ok=True)
 
 # Produce images of damage. Show to see it instead of saving it. Onlyz in 2D to see only z-projection
-damage.produce3DImage(show=False, saveFile=os.path.join(temp_dir, "xray250_3D.png"), title='X-ray 250 keV - Dose: ' + str(dose) + ' Gy - DSB: ' + str(damage.numDSB))
-damage.produce2DImages(saveFile=os.path.join(temp_dir, "xray250_2D.png"), onlyz=True, title='X-ray 250 keV - Dose: ' + str(dose) + ' Gy - DSB: ' + str(damage.numDSB))
+#damage.produce3DImage(show=False, saveFile=os.path.join(temp_dir, "xray250_3D.png"), title='X-ray 250 keV - Dose: ' + str(dose) + ' Gy - DSB: ' + str(damage.numDSB))
+#damage.produce2DImages(saveFile=os.path.join(temp_dir, "xray250_2D.png"), onlyz=True, title='X-ray 250 keV - Dose: ' + str(dose) + ' Gy - DSB: ' + str(damage.numDSB))
 # Get dose-response curves. 'BD' for base damage, 'SSB' for single strand breaks, 'DSB' for double strand breaks
 # To see this, recalculatePerEachTrack has to be True (takes longer as the damage is recomputed track by track as the
 # dose increases). Skip recal
-damage.getDoseResponseCurve(q='DSB')
+#damage.getDoseResponseCurve(q='DSB')
 
 # Joining damage in a single SDD file
 sddfile = os.path.join(temp_dir, 'test.sdd')
