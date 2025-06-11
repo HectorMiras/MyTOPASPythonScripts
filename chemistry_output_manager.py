@@ -12,13 +12,18 @@ def read_irtgvalue_phase_space(filebase):
                         The function expects filebase+'.phsp' to exist.
     
     Returns:
-        pd.DataFrame: The phase space data with proper column names.
+        pd.DataFrame: The phase space data with proper column names, or None if file doesn't exist.
     """
     # Convert to Path object if it's not already
     filebase = pathlib.Path(filebase)
     
     # Use with_suffix() or with_name() methods for Path objects
     phsp_file = filebase.with_suffix('.phsp')
+    
+    # Check if file exists
+    if not phsp_file.exists():
+        print(f"Warning: File {phsp_file} does not exist")
+        return None
     
     # Column definitions (per header)
     # 1: GValue       (molecules / 100 eV)

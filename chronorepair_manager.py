@@ -54,10 +54,7 @@ try:
     from ChronoDNARepair.repair.running import Simulator as BaseSimulator
     from ChronoDNARepair.repair import output
     from ChronoDNARepair.induction.damage import DamageToDNA
-    
-    # Import custom simulator
-    sys.path.insert(0, os.path.join(chrono_dir, 'examples'))
-    from custom_simulator import CustomSimulator
+    from ChronoDNARepair.repair.custom_simulator import CustomSimulator
 except ImportError as e:
     print(f"Warning: ChronoDNARepair module import error: {e}")
     print("Make sure ChronoRepair-HM is properly installed.")
@@ -65,8 +62,8 @@ except ImportError as e:
 
 def setup_repair_simulation(
     exposure_time=23,              # Hours
-    simulation_time=23,            # Hours (usually matches exposure_time)
-    time_steps=23,                 # Number of time steps for simulation
+    simulation_time=48,            # Hours (usually matches exposure_time)
+    time_steps=48,                 # Number of time steps for simulation
     nucleus_max_radius=4.65,       # Microns
     diffusion_model='free',        # Model for DNA fragment diffusion
     dsb_model='standard',          # Model for DSB repair
@@ -247,11 +244,8 @@ def process_multicell_repair(basepath, n_cells, sim_params, maximum_dose=-1, ver
     times = dsb_output.times
     avg_dsb_remaining = dsb_output.avgyvalues
     
-    # Calculate survival statistics
-    cell_output = results['cell_output']
-    surviving_cells = sum(1 for cell in cell_output.celllist if cell.Surviving)
-    total_cells = len(cell_output.celllist)
-    survival_fraction = surviving_cells / total_cells if total_cells > 0 else 0
+    # Calculate survival statistics including death causes
+    survival_metrics = compute_survival_metrics(results)
     
     # Compile results
     multicell_results = {
@@ -259,11 +253,7 @@ def process_multicell_repair(basepath, n_cells, sim_params, maximum_dose=-1, ver
         'dsb_remaining': avg_dsb_remaining,
         'foci': results['foci_output'].avgyvalues if hasattr(results['foci_output'], 'avgyvalues') else None,
         'misrepaired': results['misrepaired_output'].avgyvalues if hasattr(results['misrepaired_output'], 'avgyvalues') else None,
-        'survival': {
-            'surviving_cells': surviving_cells,
-            'total_cells': total_cells,
-            'survival_fraction': survival_fraction
-        }
+        'survival': survival_metrics
     }
     
     return multicell_results
@@ -277,18 +267,27 @@ def compute_survival_metrics(repair_results):
         repair_results: Results from repair simulation
         
     Returns:
-        Dictionary with survival metrics
+        Dictionary with survival metrics and death causes
     """
     cell_output = repair_results['cell_output']
     surviving_cells = sum(1 for cell in cell_output.celllist if cell.Surviving)
     total_cells = len(cell_output.celllist)
     survival_fraction = surviving_cells / total_cells if total_cells > 0 else 0
     
+    # Calculate and analyze death causes
+    dead_cells = [cell for cell in cell_output.celllist if not cell.Surviving]
+    death_causes = {}
+    for cell in dead_cells:
+        cause = cell._causeofdeath if hasattr(cell, '_causeofdeath') and cell._causeofdeath else "Unknown"
+        death_causes[cause] = death_causes.get(cause, 0) + 1
+    
     survival_metrics = {
         'surviving_cells': surviving_cells,
         'total_cells': total_cells,
         'survival_fraction': survival_fraction,
-        'survival_percent': survival_fraction * 100
+        'survival_percent': survival_fraction * 100,
+        'dead_cells': len(dead_cells),
+        'death_causes': death_causes
     }
     
     return survival_metrics
@@ -326,6 +325,14 @@ def display_repair_results(repair_results, title=None):
     print("\n----- Cell Survival Results -----")
     print(f"Surviving cells: {survival_metrics['surviving_cells']}/{survival_metrics['total_cells']}")
     print(f"Survival fraction: {survival_metrics['survival_fraction']:.4f} ({survival_metrics['survival_percent']:.1f}%)")
+    
+    # Display death causes if any cells died
+    if survival_metrics['dead_cells'] > 0 and 'death_causes' in survival_metrics:
+        print("\n----- Causes of Cell Death -----")
+        for cause, count in survival_metrics['death_causes'].items():
+            percentage = (count / survival_metrics['dead_cells']) * 100
+            print(f"{cause}: {count} cells ({percentage:.1f}% of dead cells)")
+    
     print("--------------------------------")
 
 
@@ -356,12 +363,23 @@ def plot_dsb_repair_kinetics(repair_results, title='DSB Repair Kinetics'):
     plt.grid(True, alpha=0.3)
     plt.ylim(0, 1.05)
     
-    # Add text with survival rate
+    # Add text with survival rate and death causes
     if 'cell_output' in repair_results:
         survival_metrics = compute_survival_metrics(repair_results)
         sf = survival_metrics['survival_fraction']
-        plt.text(0.05, 0.05, f'Survival Fraction: {sf:.4f} ({sf*100:.1f}%)', 
-                transform=plt.gca().transAxes, fontsize=12,
+        
+        # Create text for survival and death info
+        text_lines = [f'Survival Fraction: {sf:.4f} ({sf*100:.1f}%)']
+        
+        # Add death cause info if available
+        if survival_metrics['dead_cells'] > 0 and 'death_causes' in survival_metrics:
+            text_lines.append("\nCauses of Cell Death:")
+            for cause, count in survival_metrics['death_causes'].items():
+                percentage = (count / survival_metrics['dead_cells']) * 100
+                text_lines.append(f"  {cause}: {count} cells ({percentage:.1f}%)")
+        
+        plt.text(0.05, 0.05, '\n'.join(text_lines), 
+                transform=plt.gca().transAxes, fontsize=10,
                 bbox=dict(facecolor='white', alpha=0.7, edgecolor='gray'))
     
     plt.tight_layout()

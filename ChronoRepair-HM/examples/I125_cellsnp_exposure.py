@@ -17,7 +17,7 @@ sys.path.insert(0, parent_dir)  # Add parent dir first
 sys.path.insert(0, chrono_dir)  # Add ChronoDNARepair dir second
 
 # Import our custom simulator that handles cell/run directory structure
-from custom_simulator import CustomSimulator
+from ChronoDNARepair.repair.custom_simulator import CustomSimulator
 
 ##############################
 # SETUP OF REPAIR SIMULATION #
@@ -26,8 +26,8 @@ from custom_simulator import CustomSimulator
 # Time options is a list with the initial time, final time and number of steps (or a list of custom time points as 4th arg)
 # Times need to be given in seconds
 initialTime = 0
-finalTime = 23 * 3600 # 23 hours
-nSteps = 23
+finalTime = 48 * 3600 # 23 hours
+nSteps = 48
 timeOptions = [initialTime, finalTime, nSteps]
 
 # Nucleus size in microns
@@ -96,4 +96,18 @@ survival_fraction = surviving_cells / total_cells if total_cells > 0 else 0
 print("\n----- Cell Survival Results -----")
 print(f"Surviving cells: {surviving_cells}/{total_cells}")
 print(f"Survival fraction: {survival_fraction:.4f} ({surviving_cells/total_cells*100:.1f}%)")
+
+# Calculate and report death causes
+dead_cells = [cell for cell in celloutput.celllist if not cell.Surviving]
+death_causes = {}
+for cell in dead_cells:
+    cause = cell._causeofdeath if hasattr(cell, '_causeofdeath') and cell._causeofdeath else "Unknown"
+    death_causes[cause] = death_causes.get(cause, 0) + 1
+
+if dead_cells:
+    print("\n----- Causes of Cell Death -----")
+    for cause, count in death_causes.items():
+        percentage = (count / len(dead_cells)) * 100
+        print(f"{cause}: {count} cells ({percentage:.1f}% of dead cells)")
+
 print("--------------------------------")

@@ -273,22 +273,25 @@ def process_multicell_results(all_cell_results):
     
     return aggregated_results
 
-def compute_enhancement_ratios(results_with_np, results_without_np):
+def compute_enhancement_ratios(results_with_np, results_without_np, scenario_label=""):
     """Compute enhancement ratios between two multicell analysis results.
     
     Args:
         results_with_np (dict): Aggregated results from multicell analysis with nanoparticles
         results_without_np (dict): Aggregated results from multicell analysis without nanoparticles
+        scenario_label (str, optional): A descriptive label for the scenario being compared (e.g., "5mg/ml NPs vs Control")
         
     Returns:
         dict: Enhancement ratios and their uncertainties for all quantities
     """
     enhancement_results = {
+        'scenario_label': scenario_label,
         'simple_quantities': {},
         'GValues': {},
         'DNADamage': {
             'totals': {}
-        }
+        },
+        'DNADamage_per_Gy': {}
     }
     
     # Process simple quantities first
@@ -364,5 +367,52 @@ def compute_enhancement_ratios(results_with_np, results_without_np):
                 'uncertainty': ratio_error
             }
     
+    # Calculate DNA damage per Gy using DoseToNucl_ph3
+    dose_key = 'DoseToNucl_ph3'
+    if dose_key in results_with_np and dose_key in results_without_np:
+        dose_with_np = results_with_np[dose_key]['mean']
+        dose_without_np = results_without_np[dose_key]['mean']
+        
+        if dose_with_np > 0 and dose_without_np > 0:
+            for col in results_with_np['DNADamage'].keys():
+                if col in results_without_np['DNADamage']:
+                    # Skip dose column itself
+                    if col == 'Dose':
+                        continue
+                        
+                    # Calculate per-Gy values
+                    damage_with_np = results_with_np['DNADamage'][col]['mean']
+                    damage_without_np = results_without_np['DNADamage'][col]['mean']
+                    
+                    # Skip if either value is zero
+                    if damage_without_np == 0 or damage_with_np == 0:
+                        continue
+                    
+                    # Calculate per-Gy values
+                    damage_per_gy_with_np = damage_with_np / dose_with_np
+                    damage_per_gy_without_np = damage_without_np / dose_without_np
+                    
+                    # Calculate enhancement ratio
+                    per_gy_ratio = damage_per_gy_with_np / damage_per_gy_without_np
+                    
+                    # Error propagation for division and ratio (combining both operations)
+                    # For damage/dose: σ_f/f = sqrt((σ_damage/damage)^2 + (σ_dose/dose)^2)
+                    rel_error_damage_with = results_with_np['DNADamage'][col]['error'] / damage_with_np if damage_with_np != 0 else 0
+                    rel_error_dose_with = results_with_np[dose_key]['error'] / dose_with_np if dose_with_np != 0 else 0
+                    rel_error_perGy_with = np.sqrt(rel_error_damage_with**2 + rel_error_dose_with**2)
+                    
+                    rel_error_damage_without = results_without_np['DNADamage'][col]['error'] / damage_without_np if damage_without_np != 0 else 0
+                    rel_error_dose_without = results_without_np[dose_key]['error'] / dose_without_np if dose_without_np != 0 else 0
+                    rel_error_perGy_without = np.sqrt(rel_error_damage_without**2 + rel_error_dose_without**2)
+                    
+                    # Final error for the ratio of per-Gy values
+                    per_gy_ratio_error = per_gy_ratio * np.sqrt(rel_error_perGy_with**2 + rel_error_perGy_without**2)
+                    
+                    enhancement_results['DNADamage_per_Gy'][col] = {
+                        'ratio': per_gy_ratio,
+                        'uncertainty': per_gy_ratio_error,
+                        'per_Gy_with_NP': damage_per_gy_with_np,
+                        'per_Gy_without_NP': damage_per_gy_without_np
+                    }
 
     return enhancement_results
