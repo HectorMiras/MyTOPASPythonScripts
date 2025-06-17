@@ -26,7 +26,7 @@ from ChronoDNARepair.repair.custom_simulator import CustomSimulator
 # Time options is a list with the initial time, final time and number of steps (or a list of custom time points as 4th arg)
 # Times need to be given in seconds
 initialTime = 0
-finalTime = 48 * 3600 # 23 hours
+finalTime = 48 * 3600 
 nSteps = 48
 timeOptions = [initialTime, finalTime, nSteps]
 
@@ -40,7 +40,7 @@ ssbModel = 'standard'
 bdModel = 'standard'
 
 # Number of identical cells simulated
-nCells = 10
+nCells = 40
 
 # Dose rate function
 doseratefunction = 'exponential'
@@ -56,7 +56,8 @@ irradiationTime = 23 * 3600 # 23 hours
 
 # Set base path for SDD files with damage induced and dose to be loaded
 # This path should contain cell# directories, which in turn contain run# directories with damage files
-damagepath = '/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/only_results_CellColony-med1-cell1/'
+#damagepath = '/home/hector/mytopassimulations/MGHsimulations/TOPAS_CellsNPs/work/only_results_CellColony-med1-cell1/'
+damagepath = '/home/radiofisica/hector/mytopassimulations/TOPAS_CellsNPs/work/CellColony-med0-cell0/'
 maximumDose = -1 # Gy # This is a limit that is not used if the accumulated dose does not reach it
 
 ########################
@@ -66,9 +67,36 @@ maximumDose = -1 # Gy # This is a limit that is not used if the accumulated dose
 # doseratefunctionargs is a list with the arguments of the dose rate function
 # irradiationTime indicates the maximum length of exposure, it has to be provided to the simulator, otherwise it
 # interprets instantaneous exposures
+
+# Default cell parameters for the simulation 
+cellpars = {
+    'cycling': True,
+    'initialStage': 'G1',
+    'mu_G1': 10.0, 'sigma_G1': 0.1, 'unit_G1': 'h',
+    'mu_S': 7.0, 'sigma_S': 0.1, 'unit_S': 'h',
+    'mu_G2': 5.0, 'sigma_G2': 0.1, 'unit_G2': 'h',
+    'mu_M': 1.5, 'sigma_M': 0.1, 'unit_M': 'h',
+    'propHeterochromatin_G1': 0.1,
+    'propHeterochromatin_S': 0.25,
+    'propHeterochromatin_G2': 0.5,
+    'propHeterochromatin_M': 0.9,
+    'damageThresholdForNecrosisAtG1S': 20,
+    'damageThresholdForApoptosisAtG1S': 14,
+    'damageThresholdForArrestAtG1S': 8,
+    'damageThresholdForNecrosisAtG2M': 16,
+    'damageThresholdForApoptosisAtG2M': 8,
+    'damageThresholdForArrestAtG2M': 5,
+    'misrepairThresholdForMitoticCatastrophe': 5,
+    'mu_necrosis': 2.0, 'sigma_necrosis': 0.75, 'unit_necrosis': 'h',
+    'mu_apoptosis': 3.0, 'sigma_apoptosis': 0.5, 'unit_apoptosis': 'h',
+    'mu_mitoticcat': 10.0, 'sigma_mitoticcat': 0.75, 'unit_mitoticcat': 'h',
+    'oxygen_concentration': 1.0
+}
+
+
 sim = CustomSimulator(timeOptions=timeOptions, diffusionmodel=diffusionModel, dsbmodel=dsbModel, ssbmodel=ssbModel, bdmodel=bdModel,
                 nucleusMaxRadius=nucleusMaxRadius, doseratefunction=doseratefunction, doseratefunctionargs=[initialDoseRate, halfLife],
-                irradiationTime=irradiationTime)
+                irradiationTime=irradiationTime, cellparams=cellpars)
 # Note: We don't need to call ReadDamage explicitly for a single cell
 # because our custom Run method will handle reading damage from each cell directory
 
@@ -111,3 +139,68 @@ if dead_cells:
         print(f"{cause}: {count} cells ({percentage:.1f}% of dead cells)")
 
 print("--------------------------------")
+
+# Generate report
+report = [
+    "ChronoDNARepair Simulation Report",
+    "==============================",
+    "",
+    "Simulation Parameters:",
+    "--------------------",
+    f"Time Range: {initialTime/3600:.1f}h to {finalTime/3600:.1f}h",
+    f"Number of Time Steps: {nSteps}",
+    f"Nucleus Max Radius: {nucleusMaxRadius} microns",
+    f"Number of Cells: {nCells}",
+    "",
+    "Models:",
+    "-------",
+    f"Diffusion Model: {diffusionModel}",
+    f"DSB Model: {dsbModel}",
+    f"SSB Model: {ssbModel}",
+    f"BD Model: {bdModel}",
+    "",
+    "Dose Rate Parameters:",
+    "-------------------",
+    f"Function Type: {doseratefunction}",
+    f"Initial Dose Rate: {initialDoseRate*3600:.4f} Gy/h",
+    f"Half Life: {halfLife/3600/24:.2f} days",
+    f"Irradiation Time: {irradiationTime/3600:.1f}h",
+    "",
+    "DSB Repair Results:",
+    "-----------------"
+]
+
+# Add DSB remaining data
+for t in range(len(times)):
+    report.append(f"Time: {times[t]:.1f}h, Fraction of DSB remaining: {avgDSBremaining[t]:.4f}")
+
+report.extend([
+    "",
+    "Cell Survival Results:",
+    "--------------------",
+    f"Surviving cells: {surviving_cells}/{total_cells}",
+    f"Survival fraction: {survival_fraction:.4f} ({surviving_cells/total_cells*100:.1f}%)",
+])
+
+# Add death causes if there are any dead cells
+if dead_cells:
+    report.extend([
+        "",
+        "Causes of Cell Death:",
+        "------------------"
+    ])
+    for cause, count in death_causes.items():
+        percentage = (count / len(dead_cells)) * 100
+        report.append(f"{cause}: {count} cells ({percentage:.1f}% of dead cells)")
+
+# Save report to file
+report_path = os.path.join(damagepath, 'chronorepair_report.txt')
+with open(report_path, 'w') as f:
+    f.write('\n'.join(report))
+
+# Print report to screen
+print("\nFull Report:")
+print("============")
+for line in report:
+    print(line)
+print(f"\nReport saved to: {report_path}")

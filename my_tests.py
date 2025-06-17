@@ -1,6 +1,7 @@
 import dnadamage_phsp_manager 
 import sddparser
-import pprint
+import pprint, os
+import matplotlib.pyplot as plt
 
 
 def test_dnadamagephsp_read():
@@ -56,5 +57,100 @@ def test_parseSDDFile():
         pp.pprint(event)
         print('\n')
 
+def test_multirun():
+    from analize_cell_sim_results import multirun_processing
+
+    # Set parameters for multirun processing
+    nruns = 100
+    filebase = '../TOPAS_CellsNPs/work/CellColony-med0-cell0/cell1'
+
+    # Process all runs and get results
+    Cell_results = multirun_processing(nruns, filebase)
+    print("Cell results:")
+    pprint.pprint(Cell_results)
+
+
+def test_multicell_analysis():
+    # Process conditions without nanoparticles
+    from analize_cell_sim_results import read_multicell_json, multicell_processing, process_multicell_results, compute_enhancement_ratios
+    from display_cell_sim_results import (
+        display_results, 
+        plot_damage_distribution,
+        plot_gvalues, 
+        display_multicell_results,
+        plot_all_enhancement_categories,
+        plot_multi_enhancement_categories,
+        display_enhancement_table_grouped
+    )
+
+    # Set parameters for multicell processing
+    n_cells = 40  # Number of cells to process
+    n_runs = 100  # Number of runs per cell
+    base_dir = '../TOPAS_CellsNPs/work/CellColony-med1-cell1'  # Base directory containing cell directories
+
+    # Process all cells and their runs
+    all_cell_results_med_cell = multicell_processing(n_cells, n_runs, base_dir, save_json=True)
+
+    # Read from the JSON file if it exists
+    #json_path = os.path.join(base_dir, 'multicell_results.json')
+    #all_cell_results_med_cell = read_multicell_json(json_path)
+
+
+    # Compute statistics across cells
+    multicell_stats_med_cell = process_multicell_results(all_cell_results_med_cell)
+
+    # Display results for condition without nanoparticles
+    display_multicell_results(all_cell_results_med_cell, multicell_stats_med_cell, output_path=base_dir)
+
+
+def test_enhancement_ratios():
+    from analize_cell_sim_results import multicell_processing, process_multicell_results, compute_enhancement_ratios, read_multicell_json
+    from display_cell_sim_results import plot_all_enhancement_categories, plot_multi_enhancement_categories, display_enhancement_table_grouped
+
+    n_cells = 40  # Number of cells to process
+    n_runs = 100  # Number of runs per cell
+    # Process conditions without nanoparticles  
+    base_dir = '../TOPAS_CellsNPs/work/CellColony-med0-cell0'  # Base directory containing cell directories
+    #all_cell_results_med0_cell0 = multicell_processing(n_cells, n_runs, base_dir)
+    json_path = os.path.join(base_dir, 'multicell_results.json')
+    all_cell_results_med0_cell0 = read_multicell_json(json_path)
+    multicell_stats_med0_cell0 = process_multicell_results(all_cell_results_med0_cell0)
+
+    # Process conditions with nanoparticles 1mg/ml 
+    base_dir = '../TOPAS_CellsNPs/work/CellColony-med1-cell1'  # Base directory containing cell directories
+    #all_cell_results_med1_cell1 = multicell_processing(n_cells, n_runs, base_dir)
+    json_path = os.path.join(base_dir, 'multicell_results.json')
+    all_cell_results_med1_cell1 = read_multicell_json(json_path)
+    multicell_stats_med1_cell1 = process_multicell_results(all_cell_results_med1_cell1)
+
+    # Get enhancement ratios with scenario label
+    enhancement_results = compute_enhancement_ratios(multicell_stats_med1_cell1, multicell_stats_med0_cell0, 
+                                               scenario_label="1mg/ml NPs")
+
+
+    # Display enhancement tables with the grouped approach
+    print(f"Enhancement Ratios: {enhancement_results['scenario_label']}")
+    print("-" * (len("Enhancement Ratios: ") + len(enhancement_results['scenario_label'])))
+    dfs_dic = display_enhancement_table_grouped(enhancement_results)
+    for k,v in dfs_dic.items():
+        print(f'\n{k}:')
+        print(v)
+
+        # Visualize enhancement ratios for 1mg/ml NP concentration vs control
+    scenario_label = enhancement_results.get('scenario_label')
+    print(f"\nVisualization of Enhancement Ratios: {scenario_label}")
+    print("-" * (len("Visualization of Enhancement Ratios: ") + len(scenario_label)))
+    # Can use either the old function or the new one with a single scenario
+    # Using new function that supports multiple scenarios
+    figures = plot_multi_enhancement_categories([enhancement_results])
+    
+    # Display all returned figures
+    for fig in figures:
+        plt.figure(fig.number)
+        plt.show()
+
 # To run the test:
-test_parseSDDFile()
+#test_parseSDDFile()
+#test_multirun()
+#test_multicell_analysis()
+test_enhancement_ratios()

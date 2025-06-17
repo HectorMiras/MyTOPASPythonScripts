@@ -1,10 +1,11 @@
 # ignore all .bak files
  *bak
 
-# ignore all files in the docs directory
 /__pycache__/
 /.idea/
 /venv/
 /ChronoRepair-HM/temp/
 **/temp/
 /ChronoRepair-HM/examples/damageFromTopas-nBio/
+/plots/
+/tables/

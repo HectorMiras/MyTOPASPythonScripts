@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import pandas as pd
 from chemistry_output_manager import read_irtgvalue_phase_space, filter_inactive_species, create_pivots, get_final_values
@@ -139,13 +140,14 @@ def multirun_processing(maxruns, filebase):
     
     return Cell_results
 
-def multicell_processing(maxcells, maxruns, filebase):
+def multicell_processing(maxcells, maxruns, filebase, save_json=False):
     """Process multiple cells each containing multiple TOPAS simulation runs and aggregate results.
     
     Args:
         maxcells (int): Number of cell directories to process
         maxruns (int): Number of runs to process per cell
         filebase (str): Base directory containing the cell directories
+        save_json (bool, optional): Whether to save results as JSON file. Defaults to False.
         
     Returns:
         list: List of dictionaries containing aggregated results for each cell
@@ -168,6 +170,36 @@ def multicell_processing(maxcells, maxruns, filebase):
             continue
             
     print("\nAll cells processed!")
+    
+    # Save results as JSON if requested
+    if save_json:
+        import json
+        
+        # Convert numpy types to native Python types for JSON serialization
+        def convert_numpy(obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return obj
+        
+        # Create a serializable copy of the results
+        json_results = []
+        for cell_result in all_cell_results:
+            # Deep copy and convert numpy types
+            cell_json = json.loads(
+                json.dumps(cell_result, default=convert_numpy)
+            )
+            json_results.append(cell_json)
+        
+        # Save to JSON file
+        json_path = os.path.join(filebase, 'multicell_results.json')
+        with open(json_path, 'w') as f:
+            json.dump(json_results, f, indent=2)
+        print(f"Results saved to: {json_path}")
+    
     return all_cell_results
 
 def process_multicell_results(all_cell_results):
@@ -416,3 +448,29 @@ def compute_enhancement_ratios(results_with_np, results_without_np, scenario_lab
                     }
 
     return enhancement_results
+
+def read_multicell_json(json_path):
+    """Read multicell results from a JSON file saved by multicell_processing.
+    
+    Args:
+        json_path (str): Path to the JSON file containing multicell results
+        
+    Returns:
+        list: List of dictionaries containing cell results in the same format
+             as returned by multicell_processing
+    """
+    if not os.path.exists(json_path):
+        raise FileNotFoundError(f"JSON file not found: {json_path}")
+        
+    with open(json_path, 'r') as f:
+        json_results = json.load(f)
+        
+    # Convert numeric arrays back to numpy arrays where needed
+    for cell_result in json_results:
+        # Convert DNA damage arrays if they exist
+        if 'DNADamage' in cell_result:
+            for key, value in cell_result['DNADamage'].items():
+                if isinstance(value, list):
+                    cell_result['DNADamage'][key] = np.array(value)
+    
+    return json_results
