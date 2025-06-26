@@ -929,6 +929,7 @@ class DamageToDNA:
             'Number_of_foci': self.getNumberOfFoci(0.5)
         }
         return damage_dict
+    
 
     def printDamageCount(self):
         self.messages.append("Summary of damage"); print(self.messages[-1])

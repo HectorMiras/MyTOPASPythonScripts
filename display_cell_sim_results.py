@@ -113,14 +113,25 @@ def display_results(results):
     print("-" * 50)
     
     # Sort species by G-Value for better presentation
-    species_data = [(species, data['value'], data['error']) 
-                   for species, data in results['GValues'].items() 
-                   if 'value' in data]
-    species_data.sort(key=lambda x: x[1], reverse=True)
-    
-    for species, value, error in species_data:
-        print(f"\n{species}:")
-        print(f"  - G-Value: {value:.4f} ± {error:.4f} molecules/100eV (2σ)")
+    if 'GValues' in results:
+        species_data = [(species, data['value'], data['error']) 
+                    for species, data in results['GValues'].items() 
+                    if 'value' in data]
+        species_data.sort(key=lambda x: x[1], reverse=True)
+        
+        for species, value, error in species_data:
+            print(f"\n{species}:")
+            print(f"  - G-Value: {value:.4f} ± {error:.4f} molecules/100eV (2σ)")
+
+    if 'NumberOfMolecules' in results:
+        species_data = [(species, data['value']) 
+                    for species, data in results['NumberOfMolecules'].items() 
+                    if 'value' in data]
+        species_data.sort(key=lambda x: x[1], reverse=True)
+        
+        for species, value in species_data:
+            print(f"\n{species}:")
+            print(f"  - Number of Molecules: {value} molecules")
     
     # Display DNA damage results if available
     if 'DNADamage' in results:
@@ -155,7 +166,8 @@ def plot_damage_distribution(damage_totals, save_plots=False):
         ('DSB_Direct', 'DSB_Indirect'),
         ('SSB_Direct', 'SSB_Indirect'),
         ('SB_Direct', 'SB_Indirect'),
-        ('BD_Direct', 'BD_Indirect')
+        ('BD_Direct', 'BD_Indirect'),
+        ('Number_of_foci','Number_of_foci')
     ]
     
     valid_pairs = [(direct, indirect) for direct, indirect in damage_pairs 
@@ -407,6 +419,7 @@ def plot_dna_damage_violin(all_cell_results):
                 bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
     
     ax.grid(True, alpha=0.3, axis='y', linestyle='--')
+    ax.set_yscale('log')
     plt.tight_layout()
     save_or_show_plot(fig, 'dna_damage_violin')
     return fig
@@ -430,13 +443,24 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
         'DoseToNucl_ph3 (Gy)',
         'Energy to Cell (MeV)',
         'NP electrons',
-        'DSB', 'SSB', 'SB', 'BD'
+        'DSB', 'SSB', 'SB', 'BD', 'FOCI'
     ]
 
+    isDNA_damage = 'DNADamage' in multicell_stats and len(multicell_stats['DNADamage']) > 0
+    isNumberOfMolecules = 'NumberOfMolecules' in multicell_stats and len(multicell_stats['NumberOfMolecules']) > 0
+    isGValues = 'GValues' in multicell_stats and len(multicell_stats['GValues']) > 0
+
     # Add G-Value columns for each species
-    species_list = list(all_cell_results[0]['GValues'].keys())
-    gvalue_columns = [f'G({species})' for species in species_list]
-    columns.extend(gvalue_columns)
+    if isGValues:
+        species_list = list(all_cell_results[0]['GValues'].keys())
+        gvalue_columns = [f'G({species})' for species in species_list]
+        columns.extend(gvalue_columns)
+
+    # Add NumberOfMolecules columns for each species
+    if isNumberOfMolecules:
+        species_list = list(all_cell_results[0]['NumberOfMolecules'].keys())
+        nmolecules_columns = [f'Num({species})' for species in species_list]
+        columns.extend(nmolecules_columns)
 
     # Collect data for each cell
     for i, cell_results in enumerate(all_cell_results):
@@ -445,16 +469,30 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
             cell_results['DoseToNucl_ph2']['value'],
             cell_results['DoseToNucl_ph3']['value'],
             cell_results['Ecell']['value'],
-            cell_results['NP_el']['value'],
-            cell_results['DNADamage']['DSB'],
-            cell_results['DNADamage']['SSB'],
-            cell_results['DNADamage']['SB'],
-            cell_results['DNADamage']['BD']
+            cell_results['NP_el']['value']
         ]
+        # Add DNA damage statistics if available 
+        if isDNA_damage:
+            row.extend([
+                cell_results['DNADamage']['DSB'],
+                cell_results['DNADamage']['SSB'],
+                cell_results['DNADamage']['SB'],
+                cell_results['DNADamage']['BD'],
+                cell_results['DNADamage']['Number_of_foci']
+            ])
         # Add G-Values
-        for species in species_list:
-            row.append(cell_results['GValues'][species]['value'])
+        if isGValues:
+            for species in species_list:
+                row.append(cell_results['GValues'][species]['value'])
+
+        # Add NumberOfMolecules
+        if isNumberOfMolecules:
+            for species in species_list:
+                row.append(cell_results['NumberOfMolecules'][species]['value'])
+        
         data.append(row)
+
+    
 
     # Add mean values row
     mean_row = [
@@ -463,31 +501,55 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
         multicell_stats['DoseToNucl_ph3']['mean'],
         multicell_stats['Ecell']['mean'],
         multicell_stats['NP_el']['mean'],
-        multicell_stats['DNADamage']['DSB']['mean'],
-        multicell_stats['DNADamage']['SSB']['mean'],
-        multicell_stats['DNADamage']['SB']['mean'],
-        multicell_stats['DNADamage']['BD']['mean']
     ]
+    # Add DNA damage means
+    if isDNA_damage:
+        mean_row.extend([
+            multicell_stats['DNADamage']['DSB']['mean'],
+            multicell_stats['DNADamage']['SSB']['mean'],
+            multicell_stats['DNADamage']['SB']['mean'],
+            multicell_stats['DNADamage']['BD']['mean'],
+            multicell_stats['DNADamage']['Number_of_foci']['mean']
+        ]) 
     # Add G-Value means
-    for species in species_list:
-        mean_row.append(multicell_stats['GValues'][species]['mean'])
+    if isGValues:
+        for species in species_list:
+            mean_row.append(multicell_stats['GValues'][species]['mean'])
+
+    # Add NumberOfMolecules means
+    if isNumberOfMolecules:
+        for species in species_list:
+            mean_row.append(multicell_stats['NumberOfMolecules'][species]['mean'])
+    
     data.append(mean_row)
 
     # Add standard deviation row
     error_row = [
-        'Uncertainty',
+       'Uncertainty',
         multicell_stats['DoseToNucl_ph2']['error'],
         multicell_stats['DoseToNucl_ph3']['error'],
         multicell_stats['Ecell']['error'],
-        multicell_stats['NP_el']['error'],
-        multicell_stats['DNADamage']['DSB']['error'],
-        multicell_stats['DNADamage']['SSB']['error'],
-        multicell_stats['DNADamage']['SB']['error'],
-        multicell_stats['DNADamage']['BD']['error']
+        multicell_stats['NP_el']['error']
     ]
+    # Add DNA damage standard deviations
+    if isDNA_damage:
+        error_row.extend([
+            multicell_stats['DNADamage']['DSB']['error'],
+            multicell_stats['DNADamage']['SSB']['error'],
+            multicell_stats['DNADamage']['SB']['error'],
+            multicell_stats['DNADamage']['BD']['error'],
+            multicell_stats['DNADamage']['Number_of_foci']['error']
+        ])
     # Add G-Value standard deviations
-    for species in species_list:
-        error_row.append(multicell_stats['GValues'][species]['error'])
+    if isGValues:
+        for species in species_list:
+            error_row.append(multicell_stats['GValues'][species]['error'])
+
+    # Add NumberOfMolecules standard deviations
+    if isNumberOfMolecules:
+        for species in species_list:
+            error_row.append(multicell_stats['NumberOfMolecules'][species]['error'])
+        
     data.append(error_row)
 
     # Create DataFrame and format display
@@ -508,7 +570,7 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
     # Convert integer columns to int type and format all columns
     formatted_df = pd.DataFrame()
     for col in results_df.columns:
-        if col in ['NP electrons', 'DSB', 'SSB', 'SB', 'BD']:
+        if col in ['NP electrons', 'DSB', 'SSB', 'SB', 'BD', 'FOCI']:
             formatted_df[col] = results_df[col].astype('float').round().astype('Int64')
         else:
             formatted_df[col] = results_df[col].apply(format_value)
@@ -535,15 +597,17 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
         csv_filename = os.path.join(tables_dir, 'multicell_results.csv')
         formatted_df.to_csv(csv_filename, index=False)
         print(f"\nTable saved to {csv_filename}")
-
-    # Plot distributions
-    plot_chemical_species_violin(all_cell_results)
-    plot_dna_damage_violin(all_cell_results)
+   
     
-    if not is_jupyter():
-        print("\nPlots have been saved in the 'plots' directory:"
-              "\n- chemical_species_violin.png"
-              "\n- dna_damage_violin.png")
+    
+    # Save or show plots using the existing utility function
+    if isGValues:
+        fig_chem = plot_chemical_species_violin(all_cell_results)
+        save_or_show_plot(fig_chem, 'chemical_species_violin', output_path)
+
+    if isDNA_damage:
+        fig_dna = plot_dna_damage_violin(all_cell_results)
+        save_or_show_plot(fig_dna, 'dna_damage_violin', output_path)
 
 def create_enhancement_bar_plot(data_list, labels, errors_list, title, colors=None, scenario_labels=None):
     """Create a bar plot for a specific enhancement category with multiple scenarios.
@@ -898,10 +962,16 @@ def display_enhancement_table_grouped(enhancement_results):
     Returns:
         Dictionary of DataFrames with different enhancement categories
     """
+
+    isDNA_damage = 'DNADamage' in enhancement_results and len(enhancement_results['DNADamage']) > 0
+    isNumberOfMolecules = 'NumberOfMolecules' in enhancement_results and len(enhancement_results['NumberOfMolecules']) > 0
+    isGValues = 'GValues' in enhancement_results and len(enhancement_results['GValues']) > 0
+
+
     # Define column names for all tables
     columns = ['Quantity', 'Enhancement Ratio', 'Uncertainty']
     
-    # ---- Group 1: Dose and Energy ----
+    # ---- Group Dose and Energy ----
     data_dose_energy = []
     for key in ['DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell']:
         if key in enhancement_results['simple_quantities']:
@@ -917,80 +987,104 @@ def display_enhancement_table_grouped(enhancement_results):
                 result['uncertainty']
             ])
     
-    # ---- Group 2: G-Values ----
-    data_gvalues = []
-    for species in enhancement_results['GValues']:
-        result = enhancement_results['GValues'][species]
-        data_gvalues.append([
-            f'G-Value ({species})',
-            result['ratio'],
-            result['uncertainty']
-        ])
-    
-    # ---- Group 3: DNA Damage (main types) ----
-    data_dna_damage = []
-    dna_damage_types = {
-        'DSB': 'Double Strand Breaks',
-        'SSB': 'Single Strand Breaks',
-        'SB': 'Strand Breaks',
-        'BD': 'Base Damage'
-    }
-    
-    for damage_type, display_name in dna_damage_types.items():
-        if damage_type in enhancement_results['DNADamage']:
-            result = enhancement_results['DNADamage'][damage_type]
-            if result['ratio'] is not None:
-                data_dna_damage.append([
-                    display_name,
+    # ---- Group G-Values ----
+    if isGValues:
+        data_gvalues = []
+        for species in enhancement_results['GValues']:
+            result = enhancement_results['GValues'][species]
+            data_gvalues.append([
+                f'G-Value ({species})',
+                result['ratio'],
+                result['uncertainty']
+            ])
+
+    # ---- Group NumberOfMolecules ----
+    if isNumberOfMolecules:
+        data_nmolvalues = []
+        for species in enhancement_results['GValues']:
+            result = enhancement_results['GValues'][species]
+            data_nmolvalues.append([
+                f'G-Value ({species})',
+                result['ratio'],
+                result['uncertainty']
+            ])
+        
+        # ---- Group NumberOfMolecules per MeV ----
+        data_nmolvalues_per_gy = []
+        if 'NumberOfMolecules_per_MeV' in enhancement_results:
+            for species in enhancement_results:
+                result = enhancement_results['NumberOfMolecules_per_MeV'][species]
+                data_nmolvalues_per_gy.append([
+                    f'Number of molecules ({species}) per MeV',
                     result['ratio'],
                     result['uncertainty']
                 ])
+
+    # ---- Group DNA Damage (main types) ----
+    if isDNA_damage:
+        data_dna_damage = []
+        dna_damage_types = {
+            'DSB': 'Double Strand Breaks',
+            'SSB': 'Single Strand Breaks',
+            'SB': 'Strand Breaks',
+            'BD': 'Base Damage'
+        }
     
-    # ---- Group 4: Complexity ----
-    data_complexity = []
-    complexity_pattern = re.compile(r'Complexity\d+')
-    
-    for damage_type in enhancement_results['DNADamage']:
-        if complexity_pattern.match(damage_type):
-            result = enhancement_results['DNADamage'][damage_type]
-            if result['ratio'] is not None:
-                data_complexity.append([
-                    f'{damage_type} Damage',
-                    result['ratio'],
-                    result['uncertainty']
-                ])
-    
-    # ---- Group 5: DNA Damage per Gy ----
-    data_dna_damage_per_gy = []
-    if 'DNADamage_per_Gy' in enhancement_results:
         for damage_type, display_name in dna_damage_types.items():
-            if damage_type in enhancement_results['DNADamage_per_Gy']:
-                result = enhancement_results['DNADamage_per_Gy'][damage_type]
+            if damage_type in enhancement_results['DNADamage']:
+                result = enhancement_results['DNADamage'][damage_type]
                 if result['ratio'] is not None:
-                    data_dna_damage_per_gy.append([
-                        f'{display_name} per Gy',
+                    data_dna_damage.append([
+                        display_name,
                         result['ratio'],
                         result['uncertainty']
                     ])
     
-    # ---- Group 6: Complexity per Gy ----
-    data_complexity_per_gy = []
-    if 'DNADamage_per_Gy' in enhancement_results:
-        for damage_type in enhancement_results['DNADamage_per_Gy']:
+        # ---- Group Complexity ----
+        data_complexity = []
+        complexity_pattern = re.compile(r'Complexity\d+')
+        
+        for damage_type in enhancement_results['DNADamage']:
             if complexity_pattern.match(damage_type):
-                result = enhancement_results['DNADamage_per_Gy'][damage_type]
+                result = enhancement_results['DNADamage'][damage_type]
                 if result['ratio'] is not None:
-                    data_complexity_per_gy.append([
-                        f'{damage_type} Damage per Gy',
+                    data_complexity.append([
+                        f'{damage_type} Damage',
                         result['ratio'],
                         result['uncertainty']
                     ])
     
-    # Sort complexity by number
-    data_complexity.sort(key=lambda x: int(re.search(r'\d+', x[0]).group()))
-    if data_complexity_per_gy:
-        data_complexity_per_gy.sort(key=lambda x: int(re.search(r'\d+', x[0]).group()))
-    
+        # ---- Group DNA Damage per Gy ----
+        data_dna_damage_per_gy = []
+        if 'DNADamage_per_Gy' in enhancement_results:
+            for damage_type, display_name in dna_damage_types.items():
+                if damage_type in enhancement_results['DNADamage_per_Gy']:
+                    result = enhancement_results['DNADamage_per_Gy'][damage_type]
+                    if result['ratio'] is not None:
+                        data_dna_damage_per_gy.append([
+                            f'{display_name} per Gy',
+                            result['ratio'],
+                            result['uncertainty']
+                        ])
+        
+        # ---- Group Complexity per Gy ----
+        data_complexity_per_gy = []
+        if 'DNADamage_per_Gy' in enhancement_results:
+            for damage_type in enhancement_results['DNADamage_per_Gy']:
+                if complexity_pattern.match(damage_type):
+                    result = enhancement_results['DNADamage_per_Gy'][damage_type]
+                    if result['ratio'] is not None:
+                        data_complexity_per_gy.append([
+                            f'{damage_type} Damage per Gy',
+                            result['ratio'],
+                            result['uncertainty']
+                        ])
+        
+        # Sort complexity by number
+        data_complexity.sort(key=lambda x: int(re.search(r'\d+', x[0]).group()))
+        if data_complexity_per_gy:
+            data_complexity_per_gy.sort(key=lambda x: int(re.search(r'\d+', x[0]).group()))
+        
     def format_and_style_df(data, title):
         if not data:  # Skip empty data
             return None
@@ -1012,21 +1106,26 @@ def display_enhancement_table_grouped(enhancement_results):
         if not is_jupyter():
             os.makedirs('tables', exist_ok=True)
             safe_title = title.lower().replace(" ", "_").replace("/", "_")
-            csv_filename = f'tables/enhancement_{safe_title}.csv'
+            scenario_label = enhancement_results.get('scenario_label', 'default')
+            safe_label = scenario_label.lower().replace(" ", "_").replace("/", "_")
+            csv_filename = f'tables/enhancement_{safe_title}_{safe_label}.csv'
             df.to_csv(csv_filename, index=False)
             print(f"\nEnhancement table for {title} saved to {csv_filename}")
         
         return formatted_df
     
     # Create and format all DataFrames
-    dfs = {
-        "Dose and Energy Enhancement": format_and_style_df(data_dose_energy, "Dose and Energy Enhancement"),
-        "G-Values Enhancement": format_and_style_df(data_gvalues, "G-Values Enhancement"),
-        "DNA Damage Enhancement": format_and_style_df(data_dna_damage, "DNA Damage Enhancement"),
-        "Complexity Enhancement": format_and_style_df(data_complexity, "Complexity Enhancement"),
-        "DNA Damage per Gy Enhancement": format_and_style_df(data_dna_damage_per_gy, "DNA Damage per Gy Enhancement"),
-        "Complexity per Gy Enhancement": format_and_style_df(data_complexity_per_gy, "Complexity per Gy Enhancement")
-    }
+    dfs = {"Dose and Energy Enhancement": format_and_style_df(data_dose_energy, "Dose and Energy Enhancement")    }
+    if isNumberOfMolecules:
+        dfs["Number of Molecules Enhancement"] = format_and_style_df(data_nmolvalues, "Number of Molecules Enhancement")
+        dfs["Number of Molecules per MeV Enhancement"] = format_and_style_df(data_nmolvalues, "Number of Molecules per MeV Enhancement")
+    if isGValues:
+        dfs["G-Values Enhancement"] = format_and_style_df(data_gvalues, "G-Values Enhancement")
+    if isDNA_damage:
+        dfs["DNA Damage Enhancement"] = format_and_style_df(data_dna_damage, "DNA Damage Enhancement")
+        dfs["Complexity Enhancement"] = format_and_style_df(data_complexity, "Complexity Enhancement")
+        dfs["DNA Damage per Gy Enhancement"] = format_and_style_df(data_dna_damage_per_gy, "DNA Damage per Gy Enhancement")
+        dfs["Complexity per Gy Enhancement"] = format_and_style_df(data_complexity_per_gy, "Complexity per Gy Enhancement")
     
     return {k: v for k, v in dfs.items() if v is not None}
 

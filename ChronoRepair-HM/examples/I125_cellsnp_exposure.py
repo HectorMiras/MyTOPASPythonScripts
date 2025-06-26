@@ -40,7 +40,7 @@ ssbModel = 'standard'
 bdModel = 'standard'
 
 # Number of identical cells simulated
-nCells = 40
+nCells = 160
 
 # Dose rate function
 doseratefunction = 'exponential'

@@ -44,6 +44,47 @@ def read_irtgvalue_phase_space(filebase):
     
     return df
 
+def read_numberofmolecules_phase_space(filebase):
+    """
+    Read NumberOfMoleculesAtTime phase space data from file.
+    
+    Parameters:
+        filebase (str or pathlib.Path): The base file path/name without extension.
+                        The function expects filebase+'.phsp' to exist.
+    
+    Returns:
+        pd.DataFrame: The phase space data with proper column names, or None if file doesn't exist.
+    """
+    # Convert to Path object if it's not already
+    filebase = pathlib.Path(filebase)
+    
+    # Use with_suffix() or with_name() methods for Path objects
+    phsp_file = filebase.with_suffix('.phsp')
+    
+    # Check if file exists
+    if not phsp_file.exists():
+        print(f"Warning: File {phsp_file} does not exist")
+        return None
+    
+    # Column definitions (per header)
+    # 1: Total number of molecules at time
+    # 2: Mean number of molecules per event at time
+    # 3: Time [picosecond]
+    # 4: MoleculeName
+    cols = ['NumMolecule', 'MeanNumber', 'Time_ps', 'Molecule']
+    
+    # Read the phase-space file
+    df = pd.read_csv(
+        phsp_file,
+        comment='#',         # ignore lines starting with '#'
+        sep=r'\s+',          # whitespace-delimited
+        names=cols,
+        header=None,
+        engine='python'
+    )
+    
+    return df
+
 def filter_inactive_species(df):
     """
     Filter out species whose total production is zero.
@@ -54,8 +95,12 @@ def filter_inactive_species(df):
     Returns:
         pd.DataFrame: Filtered DataFrame with only active species.
     """
+    label = 'GValue'
+    if 'NumMolecule' in df.columns:
+        label = 'NumMolecule'
+
     active_species = (
-        df.groupby('Molecule', sort=False)['GValue']
+        df.groupby('Molecule', sort=False)[label]
           .sum()                 # total across all times and histories
           .loc[lambda s: s > 0]  # keep only > 0
           .index
@@ -73,23 +118,31 @@ def create_pivots(df):
     Returns:
         tuple: (pivot, pivot_err) DataFrames with Time_ps as index and Molecule as columns.
     """
+
+    label = 'GValue'
+    if 'NumMolecule' in df.columns:
+        label = 'NumMolecule'
+
     pivot = df.pivot_table(
         index='Time_ps', 
         columns='Molecule',
-        values='GValue', 
+        values=label, 
         aggfunc='mean'
     )
     
-    pivot_err = df.pivot_table(
-        index='Time_ps', 
-        columns='Molecule',
-        values='GValue_err', 
-        aggfunc='mean'
-    )
-    
-    return pivot, pivot_err
+    if label=='GValue':
+        pivot_err = df.pivot_table(
+            index='Time_ps', 
+            columns='Molecule',
+            values='GValue_err', 
+            aggfunc='mean'
+        )
+        
+        return pivot, pivot_err
+    else:
+        return pivot
 
-def get_final_values(pivot, pivot_err):
+def get_final_values(pivot, pivot_err=None):
     """
     Extract values at the final time point.
     
@@ -100,11 +153,17 @@ def get_final_values(pivot, pivot_err):
     Returns:
         tuple: (summary, summary_err) Series with final values and errors.
     """
-    last_time = pivot.index.max()
-    summary = pivot.loc[last_time].to_frame(name='GValue_final')
-    summary_err = pivot_err.loc[last_time]
-    
-    return summary, summary_err, last_time
+    if pivot_err is None:
+        last_time = pivot.index.max()
+        summary = pivot.loc[last_time].to_frame(name='GValue_final')
+        
+        return summary, last_time
+    else:
+        last_time = pivot.index.max()
+        summary = pivot.loc[last_time].to_frame(name='GValue_final')
+        summary_err = pivot_err.loc[last_time]
+        
+        return summary, summary_err, last_time
 
 def plot_final_values(summary, summary_err, last_time=None):
     """
