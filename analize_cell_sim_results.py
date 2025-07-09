@@ -116,8 +116,8 @@ def multirun_processing(maxruns, filebase, save_json=False):
         'DoseToNucl_ph3': 'DoseNucleus_Ph3.csv',
         'Ecell': 'EnergyToCell.csv',
         'NP_el': 'PhaseSpace_NP',
-        'GValues': 'IRTGValue',
-#         'NumberOfMolecules': 'NumberOfMoleculesAtTime',
+       # 'GValues': 'IRTGValue',
+        'NumberOfMolecules': 'NumberOfMoleculesAtTime',
         'DNADamage': 'DNADamage'
     }
     
@@ -128,8 +128,8 @@ def multirun_processing(maxruns, filebase, save_json=False):
         'DoseToNucl_ph3': {'value': 0.0, 'error': 0.0},
         'Ecell': {'value': 0.0, 'error': 0.0},
         'NP_el': {'value': 0},  # Count value, no error needed
-         'GValues': {species: {'value': 0.0, 'error': 0.0} for species in species_of_interest},
-#         'NumberOfMolecules': {species: {'value': 0.0, 'error': 0.0} for species in species_of_interest},
+       # 'GValues': {species: {'value': 0.0, 'error': 0.0} for species in species_of_interest},
+        'NumberOfMolecules': {species: {'value': 0.0, 'error': 0.0} for species in species_of_interest},
         'DNADamage': {}
     }
 
@@ -349,10 +349,13 @@ def multicell_processing(maxcells, maxruns, filebase, save_json=False):
     # Process runs for each cell
     for cell_idx, cell_base in enumerate(cell_filebases):
         print(f"\nProcessing cell {cell_idx+1}/{maxcells}...")
+        cell_results = multirun_processing(maxruns, cell_base, save_json=True)
+        all_cell_results.append(cell_results)
         try:
             # Call multirun_processing for each cell
-            cell_results = multirun_processing(maxruns, cell_base, save_json=True)
-            all_cell_results.append(cell_results)
+           # cell_results = multirun_processing(maxruns, cell_base, save_json=True)
+           # all_cell_results.append(cell_results)
+           a=1
         except Exception as e:
             print(f"Error processing cell {cell_idx+1}: {e}")
             continue

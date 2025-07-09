@@ -102,7 +102,7 @@ def test_multicell_analysis():
     # Set parameters for multicell processing
     n_cells = 40 # Number of cells to process
     n_runs = 100  # Number of runs per cell
-    base_dir = '../TOPAS_CellsNPs/work/CellColony-med5-cell5'  # Base directory containing cell directories
+    base_dir = '../TOPAS_CellsNPs/work/CellColony-med0-cell0'  # Base directory containing cell directories
 
     # Process all cells and their runs
    # all_cell_results_med_cell = multicell_processing(n_cells, n_runs, base_dir, save_json=True)
@@ -121,7 +121,9 @@ def test_multicell_analysis():
 
 def test_enhancement_ratios():
     from analize_cell_sim_results import multicell_processing, process_multicell_results, compute_enhancement_ratios, read_multicell_json
-    from display_cell_sim_results import plot_all_enhancement_categories, plot_multi_enhancement_categories, display_enhancement_table_grouped
+    from display_cell_sim_results import plot_all_enhancement_categories, plot_multi_enhancement_categories, display_enhancement_table_grouped, plot_multicell_categories
+
+    list_multicell_stats = []
 
     n_cells = 40  # Number of cells to process
     n_runs = 100  # Number of runs per cell
@@ -131,6 +133,7 @@ def test_enhancement_ratios():
     json_path = os.path.join(base_dir, 'multicell_results.json')
     all_cell_results_med0_cell0 = read_multicell_json(json_path)
     multicell_stats_med0_cell0 = process_multicell_results(all_cell_results_med0_cell0)
+    list_multicell_stats.append(multicell_stats_med0_cell0)
 
     # Process conditions with nanoparticles 1mg/ml 
     base_dir = '../TOPAS_CellsNPs/work/CellColony-med1-cell1'  # Base directory containing cell directories
@@ -138,6 +141,7 @@ def test_enhancement_ratios():
     json_path = os.path.join(base_dir, 'multicell_results.json')
     all_cell_results_med1_cell1 = read_multicell_json(json_path)
     multicell_stats_med1_cell1 = process_multicell_results(all_cell_results_med1_cell1)
+    list_multicell_stats.append(multicell_stats_med1_cell1)
 
     # Process conditions with nanoparticles 5mg/ml 
     base_dir = '../TOPAS_CellsNPs/work/CellColony-med5-cell5'  # Base directory containing cell directories
@@ -145,6 +149,7 @@ def test_enhancement_ratios():
     json_path = os.path.join(base_dir, 'multicell_results.json')
     all_cell_results_med5_cell5 = read_multicell_json(json_path)
     multicell_stats_med5_cell5 = process_multicell_results(all_cell_results_med5_cell5)
+    list_multicell_stats.append(multicell_stats_med5_cell5)
 
 
     # Store the enhancement results in a list for comparison
@@ -178,7 +183,9 @@ def test_enhancement_ratios():
         for k,v in dfs_dic.items():
             print(f'\n{k}:')
             print(v)
+    
     figures = plot_multi_enhancement_categories(all_enhancement_results)
+    figures.append(plot_multicell_categories(list_multicell_stats,['0 mg/ml', '1 mg/ml', '5 mg/ml'] ))
 
     # Visualize enhancement ratios for 1mg/ml NP concentration vs control
     #scenario_label = enhancement_results.get('scenario_label')
@@ -190,11 +197,13 @@ def test_enhancement_ratios():
     
     # Display all returned figures
     for fig in figures:
-        plt.figure(fig.number)
+        # plt.figure(fig)
         plt.show()
+
+    
 
 # To run the test:
 #test_parseSDDFile()
 # test_multirun()
-# test_multicell_analysis()
-test_enhancement_ratios()
+test_multicell_analysis()
+# test_enhancement_ratios()

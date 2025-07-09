@@ -351,6 +351,78 @@ def plot_chemical_species_violin(all_cell_results):
     save_or_show_plot(fig, 'chemical_species_violin')
     return fig
 
+def plot_number_of_molecules_violin(all_cell_results):
+    """Create violin plot for number of molecules of chemical species across cells.
+    
+    Args:
+        all_cell_results: List of dictionaries, each containing results for one cell
+                         with GValues dictionary containing species data.
+    """
+    # Prepare data
+    species_data = defaultdict(list)
+    for cell_results in all_cell_results:
+        for species, data in cell_results['NumberOfMolecules'].items():
+            species_data[species].append(data['value'])
+    
+    # Convert to DataFrame and create violin plot
+    df = pd.DataFrame(species_data)
+    
+    fig, ax = plt.subplots(figsize=(14, 8))
+    
+    # Get a colormap for different species
+    colors = cm.tab10(np.linspace(0, 1, len(df.columns)))
+    
+    violin_parts = ax.violinplot(
+        [df[col].values for col in df.columns],
+        showmeans=True, 
+        showmedians=True,
+        vert=True
+    )
+    
+    # Customize violin plot
+    ax.set_xticks(range(1, len(df.columns) + 1))
+    ax.set_xticklabels(df.columns, rotation=45, ha='right', fontsize=18)
+    ax.set_ylabel('Number of molecules at 1μs', fontsize=20)
+    ax.tick_params(axis='y', labelsize=14)
+    ax.set_title('Distribution of water radiolysis products across cells', fontsize=24)
+    
+    ax.grid(True, alpha=0.3, axis='y', linestyle='--')
+    
+    # Color the violins
+    for i, (pc, color) in enumerate(zip(violin_parts['bodies'], colors)):
+        pc.set_facecolor(color)
+        pc.set_alpha(0.7)
+        pc.set_edgecolor('black')
+        pc.set_linewidth(1)
+    
+    # Color the median and mean lines
+    for partname, part in violin_parts.items():
+        if partname != 'bodies':
+            if partname == 'cmeans':
+                part.set_edgecolor('red')
+                part.set_linewidth(1.5)
+            elif partname == 'cmedians':
+                part.set_edgecolor('black')
+                part.set_linewidth(1.5)
+            
+    # Add a legend
+    legend_elements = [
+        Line2D([0], [0], color='red', lw=1.5, label='Mean'),
+        Line2D([0], [0], color='black', lw=1.5, label='Median')
+    ]
+    ax.legend(handles=legend_elements, loc='upper right', fontsize=16)
+    
+    # Add annotations for mean values
+    for i, col in enumerate(df.columns):
+        mean_val = int(df[col].mean())
+        ax.text(i+1, mean_val, f'{mean_val}', 
+                ha='center', va='bottom', fontsize=10, 
+                bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
+    
+    plt.tight_layout()
+    save_or_show_plot(fig, 'number_of_molecules_violin')
+    return fig
+
 def plot_dna_damage_violin(all_cell_results):
     """Create violin plot for DNA damage across cells.
     
@@ -442,9 +514,13 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
         'DoseToNucl_ph2 (Gy)', 
         'DoseToNucl_ph3 (Gy)',
         'Energy to Cell (MeV)',
-        'NP electrons',
-        'DSB', 'SSB', 'SB', 'BD', 'FOCI'
+        'NP electrons'
+        
     ]
+    
+    damage_cols = [k for k in multicell_stats['DNADamage'].keys() if k != 'Dose']
+    
+    columns.extend(damage_cols)
 
     isDNA_damage = 'DNADamage' in multicell_stats and len(multicell_stats['DNADamage']) > 0
     isNumberOfMolecules = 'NumberOfMolecules' in multicell_stats and len(multicell_stats['NumberOfMolecules']) > 0
@@ -474,11 +550,7 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
         # Add DNA damage statistics if available 
         if isDNA_damage:
             row.extend([
-                cell_results['DNADamage']['DSB'],
-                cell_results['DNADamage']['SSB'],
-                cell_results['DNADamage']['SB'],
-                cell_results['DNADamage']['BD'],
-                cell_results['DNADamage']['Number_of_foci']
+                cell_results['DNADamage'][col] for col in damage_cols
             ])
         # Add G-Values
         if isGValues:
@@ -505,11 +577,7 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
     # Add DNA damage means
     if isDNA_damage:
         mean_row.extend([
-            multicell_stats['DNADamage']['DSB']['mean'],
-            multicell_stats['DNADamage']['SSB']['mean'],
-            multicell_stats['DNADamage']['SB']['mean'],
-            multicell_stats['DNADamage']['BD']['mean'],
-            multicell_stats['DNADamage']['Number_of_foci']['mean']
+            multicell_stats['DNADamage'][col]['mean'] for col in damage_cols
         ]) 
     # Add G-Value means
     if isGValues:
@@ -534,11 +602,7 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
     # Add DNA damage standard deviations
     if isDNA_damage:
         error_row.extend([
-            multicell_stats['DNADamage']['DSB']['error'],
-            multicell_stats['DNADamage']['SSB']['error'],
-            multicell_stats['DNADamage']['SB']['error'],
-            multicell_stats['DNADamage']['BD']['error'],
-            multicell_stats['DNADamage']['Number_of_foci']['error']
+            multicell_stats['DNADamage'][col]['error']  for col in damage_cols
         ])
     # Add G-Value standard deviations
     if isGValues:
@@ -605,11 +669,18 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
         fig_chem = plot_chemical_species_violin(all_cell_results)
         save_or_show_plot(fig_chem, 'chemical_species_violin', output_path)
 
-    if isDNA_damage:
-        fig_dna = plot_dna_damage_violin(all_cell_results)
-        save_or_show_plot(fig_dna, 'dna_damage_violin', output_path)
+    if isNumberOfMolecules:
+        fig_chem = plot_number_of_molecules_violin(all_cell_results)
+        save_or_show_plot(fig_chem, 'number_of_molecules_violin', output_path)
 
-def create_enhancement_bar_plot(data_list, labels, errors_list, title, colors=None, scenario_labels=None):
+    if isDNA_damage:
+        fig_dna_violin = plot_dna_damage_violin(all_cell_results)
+        save_or_show_plot(fig_dna_violin, 'dna_damage_violin', output_path)
+        fig_dna_bar = plot_multicell_damage_bar(multicell_stats['DNADamage'])
+        save_or_show_plot(fig_dna_bar, 'dna_damage_direct_indirect', output_path)
+
+
+def create_bar_plot(data_list, labels, errors_list, title, colors=None, scenario_labels=None, relative=False):
     """Create a bar plot for a specific enhancement category with multiple scenarios.
     
     Args:
@@ -620,26 +691,31 @@ def create_enhancement_bar_plot(data_list, labels, errors_list, title, colors=No
         colors: List of colors for each scenario (will use default colors if None)
         scenario_labels: List of labels for each scenario (will use "Scenario X" if None)
     """
-    if not isinstance(data_list[0], list):
-        # Handle the case of a single scenario (backward compatibility)
-        data_list = [data_list]
-        errors_list = [errors_list]
-        if scenario_labels is None:
-            scenario_labels = [""]
+
+    # Remove bars (categories) where all values are zero (across all scenarios)
+    data_array = np.array(data_list)
+    errors_array = np.array(errors_list)
+    # Find columns where all values are zero or nan
+    nonzero_mask = ~(np.all((data_array == 0) | np.isnan(data_array), axis=0))
+    # Filter labels and data
+    filtered_labels = [label for i, label in enumerate(labels) if nonzero_mask[i]]
+    filtered_data_list = [list(np.array(d)[nonzero_mask]) for d in data_list]
+    filtered_errors_list = [list(np.array(e)[nonzero_mask]) for e in errors_list]
+    # If nothing to plot, return None
+    if len(filtered_labels) == 0:
+        print(f"No nonzero data to plot for {title}.")
+        return None
     
-    n_scenarios = len(data_list)
-    n_categories = len(labels)
+    y_label = 'Enhancement Ratio' if relative else 'Mean Value'
+    n_scenarios = len(filtered_data_list)
+    n_categories = len(filtered_labels)
     
     # Set up colors if not provided
     if colors is None:
         cmap = plt.cm.tab10
         colors = [cmap(i/10) for i in range(n_scenarios)]
-    
-    # Set up scenario labels if not provided
     if scenario_labels is None:
         scenario_labels = [f"Scenario {i+1}" for i in range(n_scenarios)]
-    
-    # Bar width based on number of scenarios
     bar_width = 0.7 / n_scenarios
     
     # Set up the figure
@@ -651,8 +727,8 @@ def create_enhancement_bar_plot(data_list, labels, errors_list, title, colors=No
     # Plot bars for each scenario
     bars_list = []
     for i in range(n_scenarios):
-        data = data_list[i]
-        errors = errors_list[i]
+        data = filtered_data_list[i]
+        errors = filtered_errors_list[i]
         pos = positions[i]
         
         # Skip scenarios with no data
@@ -668,9 +744,9 @@ def create_enhancement_bar_plot(data_list, labels, errors_list, title, colors=No
     
     # Customize plot
     ax.set_xticks(np.arange(n_categories))
-    ax.set_xticklabels(labels, rotation=45, ha='right')
-    ax.set_ylabel('Enhancement Ratio', fontsize=12)
-    ax.set_title(f'{title} Enhancement', fontsize=14)
+    ax.set_xticklabels(filtered_labels, rotation=45, ha='right')
+    ax.set_ylabel(y_label, fontsize=12)
+    ax.set_title(f'{title}', fontsize=14)
     
     # Add legend if multiple scenarios
     if n_scenarios > 1:
@@ -678,16 +754,14 @@ def create_enhancement_bar_plot(data_list, labels, errors_list, title, colors=No
     
     # Add value labels for each bar
     for i, bars in enumerate(bars_list):
-        for j, (bar, v, err) in enumerate(zip(bars, data_list[i], errors_list[i])):
+        for j, (bar, v, err) in enumerate(zip(bars, filtered_data_list[i], filtered_errors_list[i])):
             y_pos = v + err + 0.05
             ax.text(bar.get_x() + bar.get_width()/2, y_pos, 
                    f'{v:.2f}', ha='center', va='bottom', fontsize=8,
                    rotation=45 if n_scenarios > 1 else 0)
     
-    # Add grid
     ax.grid(axis='y', linestyle='--', alpha=0.3)
     
-    # Adjust layout
     plt.tight_layout()
     return fig
 
@@ -916,8 +990,8 @@ def plot_multi_enhancement_categories(enhancement_results_list):
             aligned_errors.append(scenario_errors)
         
         # Create the multi-scenario bar plot for this category
-        fig = create_enhancement_bar_plot(aligned_data, common_labels, aligned_errors, 
-                                        title, colors=colors, scenario_labels=scenario_labels)
+        fig = create_bar_plot(aligned_data, common_labels, aligned_errors, 
+                                        title, colors=colors, scenario_labels=scenario_labels, relative=True)
         all_figures.append(fig)
     
     return all_figures
@@ -946,7 +1020,7 @@ def plot_all_enhancement_categories(enhancement_results):
     for category, color, title in categories:
         data, labels, errors = extract_enhancement_data(enhancement_results, category)
         if data:  # Only create plot if we have data
-            fig = create_enhancement_bar_plot(data, labels, errors, title, 
+            fig = create_bar_plot(data, labels, errors, title, 
                                             colors=[color], 
                                             scenario_labels=[scenario] if scenario else None)
             all_figures.append(fig)
@@ -1227,3 +1301,127 @@ def display_enhancement_table(enhancement_results):
     styled_df = styled_df.applymap(color_enhancement, subset=['Enhancement Ratio'])
     
     return df, styled_df
+
+def plot_multicell_damage_bar(dnadamage_stats, output_path=None):
+    """Create a stacked bar plot for DSB and SSB (Direct and Indirect) with total error bars from 'DSB' and 'SSB' keys.
+    
+    Args:
+        dnadamage_stats: Dictionary with keys like 'DSB', 'SSB', 'DSB_Direct', 'DSB_Indirect', 'SSB_Direct', 'SSB_Indirect', each containing a dict with 'mean' and 'error'.
+        output_path: Optional path where to save the plot. If None, uses current directory.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    damage_types = ['DSB', 'SSB']
+    direct_means = [dnadamage_stats.get(f'{dt}_Direct', {}).get('mean', 0) for dt in damage_types]
+    indirect_means = [dnadamage_stats.get(f'{dt}_Indirect', {}).get('mean', 0) for dt in damage_types]
+    # Use total error from 'DSB' and 'SSB' keys
+    total_means = [dnadamage_stats.get(dt, {}).get('mean', 0) for dt in damage_types]
+    total_errs = [dnadamage_stats.get(dt, {}).get('error', 0) for dt in damage_types]
+
+    x = np.arange(len(damage_types))
+    bar_width = 0.5
+    direct_color = '#1f77b4'
+    indirect_color = '#ff7f0e'
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Plot direct bars
+    ax.bar(x, direct_means, bar_width, color=direct_color, alpha=0.8, label='Direct')
+    # Plot indirect bars stacked on direct
+    ax.bar(x, indirect_means, bar_width, bottom=direct_means, color=indirect_color, alpha=0.8, label='Indirect')
+    # Plot total error bars (centered at top of stack)
+    ax.errorbar(x, total_means, yerr=total_errs, fmt='none', ecolor='black', capsize=5, elinewidth=2, label='Total error')
+
+    # Add value labels
+    for i in range(len(x)):
+        # Direct value (centered in direct bar)
+        if direct_means[i] > 0:
+            ax.text(x[i], direct_means[i]/2, f'{direct_means[i]:.0f}', ha='center', va='center', color='white', fontweight='bold')
+        # Indirect value (centered in indirect bar)
+        if indirect_means[i] > 0:
+            ax.text(x[i], direct_means[i] + indirect_means[i]/2, f'{indirect_means[i]:.0f}', ha='center', va='center', color='white', fontweight='bold')
+        # Total value (on top)
+        total = total_means[i]
+        ax.text(x[i], total + total_errs[i] + 0.02 * max(total_means), f'Total: {total:.0f}', ha='center', va='bottom', fontsize=10)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(damage_types, fontsize=12)
+    ax.set_ylabel('Mean Damage Events', fontsize=12)
+    ax.set_title('DSB and SSB: Direct vs Indirect (Mean ± Total Error)', fontsize=14)
+    ax.legend(fontsize=10)
+    ax.grid(axis='y', alpha=0.3)
+    plt.tight_layout()
+    save_or_show_plot(fig, 'multicell_damage_bar', output_path)
+    return fig
+
+def plot_multicell_categories(multicell_stats_list, scenario_labels=None):
+    """Create plots for DNA damage and complexity categories for multiple multicell_stats scenarios.
+    
+    Args:
+        multicell_stats_list: List of multicell_stats dicts (one per scenario/concentration)
+        scenario_labels: Optional list of labels for each scenario (e.g., NP concentrations)
+    Returns:
+        List of matplotlib figures (one per category)
+    """
+    categories = [
+        ('dna_damage', 'DNA Damage'),
+        ('complexity', 'Complexity'),
+    ]
+    # Prepare scenario labels if not provided
+    if scenario_labels is None:
+        scenario_labels = [f"Scenario {i+1}" for i in range(len(multicell_stats_list))]
+    # Set colors using colormap
+    cmap = plt.cm.tab10
+    colors = [cmap(i/10) for i in range(len(multicell_stats_list))]
+    all_figures = []
+    for category_key, title in categories:
+        all_data = []
+        all_errors = []
+        all_labels = set()
+        # Collect data from each scenario for the current category
+        for stats in multicell_stats_list:
+            if category_key == 'dna_damage':
+                # Only DSB and SSB
+                keys = ['DSB', 'SSB']
+                data = [stats['DNADamage'][k]['mean'] if k in stats['DNADamage'] else 0 for k in keys]
+                errors = [stats['DNADamage'][k]['error'] if k in stats['DNADamage'] else 0 for k in keys]
+                labels = ['DSB', 'SSB']
+            elif category_key == 'complexity':
+                # All ComplexityN present
+                complexity_keys = [k for k in stats['DNADamage'] if k.startswith('Complexity')]
+                # Sort by number
+                complexity_keys = sorted(complexity_keys, key=lambda x: int(re.search(r'\d+', x).group()))
+                data = [stats['DNADamage'][k]['mean'] for k in complexity_keys]
+                errors = [stats['DNADamage'][k]['error'] for k in complexity_keys]
+                labels = [k for k in complexity_keys]
+            else:
+                data, errors, labels = [], [], []
+            all_data.append(data)
+            all_errors.append(errors)
+            all_labels.update(labels)
+        # Determine common labels (for complexity, sort numerically)
+        if category_key == 'complexity':
+            common_labels = sorted(list(all_labels), key=lambda x: int(re.search(r'\d+', x).group()))
+        else:
+            common_labels = ['DSB', 'SSB']
+        # Align data for each scenario
+        aligned_data = []
+        aligned_errors = []
+        for data, errors, labels_used in zip(all_data, all_errors, [labels if category_key=='dna_damage' else [k for k in common_labels] for _ in all_data]):
+            scenario_data = []
+            scenario_errors = []
+            for label in common_labels:
+                if label in labels_used:
+                    idx = labels_used.index(label)
+                    scenario_data.append(data[idx])
+                    scenario_errors.append(errors[idx])
+                else:
+                    scenario_data.append(float('nan'))
+                    scenario_errors.append(0)
+            aligned_data.append(scenario_data)
+            aligned_errors.append(scenario_errors)
+        # Plot
+        fig = create_bar_plot(aligned_data, common_labels, aligned_errors, title, colors=colors, scenario_labels=scenario_labels, relative=False)
+        all_figures.append(fig)
+    return all_figures

@@ -9,6 +9,7 @@ Script to show how to use the repair module to simulate variable dose rate funct
 """
 
 import os, sys
+import numpy as np
 
 # Add both the parent directory and the ChronoDNARepair directory to the Python path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -40,15 +41,15 @@ ssbModel = 'standard'
 bdModel = 'standard'
 
 # Number of identical cells simulated
-nCells = 160
+nCells = 400
 
 # Dose rate function
-doseratefunction = 'exponential'
+doseratefunction = 'exponential' # 'uniform', 'exponential', 'linear'
 initialDoseRate = 0.13803/3600 #  Gy/h
 halfLife = (59.39*24) * 3600 #  59.39 days in seconds
 # irradiationTime indicates the maximum length of exposure, it has to be provided to the simulator, otherwise it
 # interprets instantaneous exposures
-irradiationTime = 23 * 3600 # 23 hours
+irradiationTime = 24 * 3600 # 24 hours
 
 ###############
 # READ DAMAGE #
@@ -112,8 +113,9 @@ sim.Run(nCells, rereadDamageForNewRuns=True, basepath=damagepath, maxDose=maximu
 dsbOutput = sim.avgRemainingDSBOverTime
 times = dsbOutput.times
 avgDSBremaining = dsbOutput.avgyvalues
+varDSBremaining = dsbOutput.varyvalues
 for t in range(len(times)):
-    print('Time: ', times[t], 'h, Fraction of DSB remaining: ', avgDSBremaining[t])
+    print('Time: ', times[t], 'h, Fraction of DSB remaining: ', avgDSBremaining[t], ' +/- ', np.sqrt(varDSBremaining[t]))
 
 # Calculate and report cell survival fraction
 celloutput = sim.celloutput
@@ -172,7 +174,7 @@ report = [
 
 # Add DSB remaining data
 for t in range(len(times)):
-    report.append(f"Time: {times[t]:.1f}h, Fraction of DSB remaining: {avgDSBremaining[t]:.4f}")
+    report.append(f"Time: {times[t]:.1f}h, Fraction of DSB remaining: {avgDSBremaining[t]:.4f} +/- {np.sqrt(varDSBremaining[t]):.4f}")
 
 report.extend([
     "",
@@ -194,7 +196,7 @@ if dead_cells:
         report.append(f"{cause}: {count} cells ({percentage:.1f}% of dead cells)")
 
 # Save report to file
-report_path = os.path.join(damagepath, 'chronorepair_report.txt')
+report_path = os.path.join(damagepath, 'chronorepair_report_40x10cells_7.txt')
 with open(report_path, 'w') as f:
     f.write('\n'.join(report))
 

@@ -88,7 +88,7 @@ def np_stats(folder, phsp_file):
 
 
 def generate_weighted_energy_histogram(folder, phsp_file, bins, min_energy, max_energy,
-                                       particle="gammas", show=True, save_path=None, output_txt=None):
+                                       particle="gammas", show=True, save_path=None, output_txt=None, log=False):
     # Initialize histogram counts and uncertainties
     hist_counts = np.zeros(bins)
     hist_uncertainties = np.zeros(bins)
@@ -120,8 +120,11 @@ def generate_weighted_energy_histogram(folder, phsp_file, bins, min_energy, max_
     bin_edges = 1000000 * np.linspace(min_energy, max_energy, bins + 1)
     plt.hist(bin_edges[:-1], bin_edges, weights=hist_counts)
     plt.xlabel('Energy [eV]')
-    plt.ylabel('Weighted Counts')
-    plt.title('Weighted Energy Histogram')
+    plt.ylabel('Counts')
+    plt.title('Energy Histogram')
+    if log: 
+        plt.yscale('log')
+       # plt.xscale('log')
 
     if save_path:
         plt.savefig(os.path.join(folder, f'EnergyHistogram_{phsp_file}_{particle}.png'))
