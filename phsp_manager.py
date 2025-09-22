@@ -88,7 +88,7 @@ def np_stats(folder, phsp_file):
 
 
 def generate_weighted_energy_histogram(folder, phsp_file, bins, min_energy, max_energy,
-                                       particle="gammas", show=True, save_path=None, output_txt=None, log=False):
+                                       particle="gammas", show=True, save_path=None, output_txt=None, log=False, relative=False):
     # Initialize histogram counts and uncertainties
     hist_counts = np.zeros(bins)
     hist_uncertainties = np.zeros(bins)
@@ -113,31 +113,42 @@ def generate_weighted_energy_histogram(folder, phsp_file, bins, min_energy, max_
                     bin_index = bins - 1
                 hist_counts[bin_index] += weight
 
+    # If relative, normalize so sum(hist_counts) == 1
+    if relative and hist_counts.sum() > 0:
+        hist_counts = hist_counts / hist_counts.sum()
+
     # Calculate uncertainties
-    hist_uncertainties = np.sqrt(hist_counts)
+    hist_uncertainties = np.sqrt(hist_counts) if not relative else np.sqrt(hist_counts * hist_counts.sum()) / hist_counts.sum()
 
     # Plot the histogram with weights
-    bin_edges = 1000000 * np.linspace(min_energy, max_energy, bins + 1)
-    plt.hist(bin_edges[:-1], bin_edges, weights=hist_counts)
-    plt.xlabel('Energy [eV]')
-    plt.ylabel('Counts')
-    plt.title('Energy Histogram')
-    if log: 
-        plt.yscale('log')
-       # plt.xscale('log')
-
+    bin_edges = 1000 * np.linspace(min_energy, max_energy, bins + 1)
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.hist(bin_edges[:-1], bin_edges, weights=hist_counts, color="#0072B2", edgecolor='black', linewidth=1.2)
+    ax.set_xlabel('Energy [keV]', fontsize=16)
+    ax.set_ylabel('Relative Counts' if relative else 'Counts', fontsize=16)
+    ax.set_title('Electrons emerging from AuNPs' if particle == "electrons" else 'Photons emerging from AuNPs', fontsize=18, pad=15)
+    ax.tick_params(axis='both', which='major', labelsize=14, length=7, width=2)
+    ax.tick_params(axis='both', which='minor', labelsize=12, length=4, width=1)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_linewidth(1.5)
+    ax.spines['bottom'].set_linewidth(1.5)
+    ax.grid(True, which='major', linestyle='--', linewidth=0.7, alpha=0.5)
+    fig.patch.set_facecolor('white')
+    if log:
+        ax.set_yscale('log')
+    fig.tight_layout()
     if save_path:
-        plt.savefig(os.path.join(folder, f'EnergyHistogram_{phsp_file}_{particle}.png'))
-
+        plt.savefig(os.path.join(folder, f'EnergyHistogram_{phsp_file}_{particle}.png'), dpi=300, bbox_inches='tight')
     if show:
         plt.show()
-
-    plt.close()
+    plt.close(fig)
 
     if output_txt:
         bin_centers = np.linspace(min_energy + bin_width / 2, max_energy - bin_width / 2, bins)
         with open(os.path.join(folder, f'EnergyHistogram_{phsp_file}_{particle}.txt'), 'w') as f:
-            f.write('# Energy[MeV] Weighted_Counts Uncertainty\n')
+            f.write('# Energy[MeV] ')
+            f.write('Relative_Counts Uncertainty\n' if relative else 'Weighted_Counts Uncertainty\n')
             for i in range(bins):
                 f.write(f'{bin_centers[i]} {hist_counts[i]} {hist_uncertainties[i]}\n')
 

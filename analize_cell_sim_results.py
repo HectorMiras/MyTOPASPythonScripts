@@ -30,10 +30,12 @@ def save_multirun_results(Cell_results=None, df_doses=None, df_gvalues=None, df_
     ]
     
     # Add damage-related columns
-    damage_columns = ['DSB', 'SSB', 'SB', 'BD']
-    if 'Number_of_foci' in Cell_results['DNADamage']:
-        damage_columns.append('FOCI')
-    columns.extend(damage_columns)
+    if 'DNADamage' in Cell_results:
+        if Cell_results['DNADamage'] is not None and len(Cell_results['DNADamage']) > 0:
+            damage_columns = ['DSB', 'SSB', 'SB', 'BD']
+            if 'Number_of_foci' in Cell_results['DNADamage']:
+                damage_columns.append('FOCI')
+            columns.extend(damage_columns)
     
     # Add G-Value columns for each species
     if 'GValues' in Cell_results:
@@ -112,18 +114,20 @@ def multirun_processing(maxruns, filebase, save_json=False):
     
     Cell_results_files = {
         'Original_hists': 'DoseToCell_I125Beam.csv',
+        'DoseToCell_ph1': 'DoseToCell_I125Beam.csv',
         'DoseToNucl_ph2': 'DoseNucleus_Total.csv',
         'DoseToNucl_ph3': 'DoseNucleus_Ph3.csv',
         'Ecell': 'EnergyToCell.csv',
-        'NP_el': 'PhaseSpace_NP',
+        'NP_el': 'PhaseSpace_NP'
        # 'GValues': 'IRTGValue',
-        'NumberOfMolecules': 'NumberOfMoleculesAtTime',
-        'DNADamage': 'DNADamage'
+      #  'NumberOfMolecules': 'NumberOfMoleculesAtTime',
+      #  'DNADamage': 'DNADamage'
     }
     
     # Initialize results structure
     Cell_results = {
         'Original_hists': {'value': 0},  # Single value, no error needed
+        'DoseToCell_ph1': {'value': 0.0, 'error': 0.0},
         'DoseToNucl_ph2': {'value': 0.0, 'error': 0.0},
         'DoseToNucl_ph3': {'value': 0.0, 'error': 0.0},
         'Ecell': {'value': 0.0, 'error': 0.0},
@@ -209,10 +213,10 @@ def multirun_processing(maxruns, filebase, save_json=False):
                 # Accumulate values for statistical processing
                 if 'values' not in Cell_results[result_key]:
                     Cell_results[result_key]['values'] = []
-                    Cell_results[result_key]['values'].append(stats.mean)
+                    Cell_results[result_key]['values'].append(stats.sum_value)
                     Cell_results[result_key]['stats'] = stats
                 else:
-                    Cell_results[result_key]['values'].append(stats.mean)
+                    Cell_results[result_key]['values'].append(stats.sum_value)
                     Cell_results[result_key]['stats'] += stats
     
     print("\nProcessing complete!")
@@ -224,7 +228,7 @@ def multirun_processing(maxruns, filebase, save_json=False):
         df_list.append(df_doses)
 
     # Calculate final statistics
-    for key in ['DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell']:
+    for key in ['DoseToCell_ph1','DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell']:
         if 'values' in Cell_results[key]:
             values = np.array(Cell_results[key]['values'])
             stats = Cell_results[key]['stats']
@@ -408,6 +412,7 @@ def process_multicell_results(all_cell_results):
     # Initialize aggregated results structure with empty dictionaries
     aggregated_results = {
         'Original_hists': dict(base_result),
+        'DoseToCell_ph1': dict(base_result),
         'DoseToNucl_ph2': dict(base_result),
         'DoseToNucl_ph3': dict(base_result),
         'Ecell': dict(base_result),
@@ -425,6 +430,7 @@ def process_multicell_results(all_cell_results):
     # First, collect all values for each quantity
     collected_values = {
         'Original_hists': [],
+        'DoseToCell_ph1': [],
         'DoseToNucl_ph2': [],
         'DoseToNucl_ph3': [],
         'Ecell': [],
@@ -451,16 +457,18 @@ def process_multicell_results(all_cell_results):
             collected_values['GValues'][species] = {'values': [], 'errors': []}
             aggregated_results['GValues'][species] = dict(base_result)
 
+    damage_list = []
     if 'DNADamage' in available_keys:
-        damage_list = list(first_cell['DNADamage'].keys())
-        for dmg in damage_list:
-            collected_values['DNADamage'][dmg] = []
-            aggregated_results['DNADamage'][dmg] = dict(base_result)
+        if first_cell['DNADamage'] is not None and len(first_cell['DNADamage']) > 0:
+            damage_list = list(first_cell['DNADamage'].keys())
+            for dmg in damage_list:
+                collected_values['DNADamage'][dmg] = []
+                aggregated_results['DNADamage'][dmg] = dict(base_result)
     
     # Collect values from each cell
     for cell_results in all_cell_results:
         # Simple quantities
-        for key in ['Original_hists', 'DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell', 'NP_el']:
+        for key in ['Original_hists', 'DoseToCell_ph1', 'DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell', 'NP_el']:
             if key in cell_results:
                 collected_values[key].append(cell_results[key]['value'])
         
@@ -485,13 +493,14 @@ def process_multicell_results(all_cell_results):
         
         # DNA Damage
         if 'DNADamage' in cell_results:
-            for dmg in damage_list:
-                if dmg in cell_results['DNADamage']:
-                    collected_values['DNADamage'][dmg].append(cell_results['DNADamage'][dmg])
+            if cell_results['DNADamage'] is not None and len(cell_results['DNADamage']) > 0:
+                for dmg in damage_list:
+                    if dmg in cell_results['DNADamage']:
+                        collected_values['DNADamage'][dmg].append(cell_results['DNADamage'][dmg])
 
     # Calculate statistics only for quantities that have collected values
     # Simple quantities
-    for key in ['DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell', 'Original_hists', 'NP_el']:
+    for key in ['DoseToCell_ph1', 'DoseToNucl_ph2', 'DoseToNucl_ph3', 'Ecell', 'Original_hists', 'NP_el']:
         if collected_values[key]:  # Only process if we have values
             values = np.array(collected_values[key])
             aggregated_results[key]['mean'] = np.mean(values)
@@ -562,7 +571,7 @@ def compute_enhancement_ratios(results_with_np, results_without_np, scenario_lab
         'simple_quantities': {},
         'GValues': {},
         'NumberOfMolecules': {},
-        'NumberOfMolecules_per_Gy': {},
+        'NumberOfMolecules_per_MeV': {},
         'DNADamage': {
             'totals': {}
         },
@@ -639,6 +648,7 @@ def compute_enhancement_ratios(results_with_np, results_without_np, scenario_lab
             dose_without_np = results_without_np[dose_key]['mean']
             
             if dose_with_np > 0 and dose_without_np > 0:
+                enhancement_results['NumberOfMolecules_per_MeV']={}
                 for species in results_with_np['NumberOfMolecules'].keys():
                     if species in results_without_np['NumberOfMolecules']:
                         # Calculate per-Gy values
@@ -669,12 +679,13 @@ def compute_enhancement_ratios(results_with_np, results_without_np, scenario_lab
                         # Final error for the ratio of per-Gy values
                         per_gy_ratio_error = per_gy_ratio * np.sqrt(rel_error_perGy_with**2 + rel_error_perGy_without**2)
                         
-                        enhancement_results['NumberOfMolecules_per_MeV'][species] = {
-                            'ratio': per_gy_ratio,
-                            'uncertainty': per_gy_ratio_error,
-                            'per_MeV_with_NP': nmol_per_gy_with_np,
-                            'per_MeV_without_NP': nmol_per_gy_without_np
-                        }
+                        if 'NumberOfMolecules_per_MeV' in enhancement_results:
+                            enhancement_results['NumberOfMolecules_per_MeV'][species] = {
+                                'ratio': per_gy_ratio,
+                                'uncertainty': per_gy_ratio_error,
+                                'per_MeV_with_NP': nmol_per_gy_with_np,
+                                'per_MeV_without_NP': nmol_per_gy_without_np
+                            }
 
     # Process G-Values
     if isGValues:
@@ -798,8 +809,9 @@ def read_multicell_json(json_path):
     for cell_result in json_results:
         # Convert DNA damage arrays if they exist
         if 'DNADamage' in cell_result:
-            for key, value in cell_result['DNADamage'].items():
-                if isinstance(value, list):
-                    cell_result['DNADamage'][key] = np.array(value)
+            if cell_result['DNADamage'] is not None and len(cell_result['DNADamage']) > 0:
+                for key, value in cell_result['DNADamage'].items():
+                    if isinstance(value, list):
+                        cell_result['DNADamage'][key] = np.array(value)
     
     return json_results

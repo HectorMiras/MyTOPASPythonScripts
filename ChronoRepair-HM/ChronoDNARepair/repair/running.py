@@ -573,6 +573,7 @@ class RunManager:
     def AddCellOutput(self):
         self.celloutput.Surviving = self.cell.Surviving
         self.celloutput.DoseExposure = self.damage.cumulativeDose
+        self.celloutput.TimeOfDeath = getattr(self.cell, 'TimeOfDeath', -1)
         self.cellcultureoutput.AddCell(self.celloutput)
 
     def _storeImages(self):

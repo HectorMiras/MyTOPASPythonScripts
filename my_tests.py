@@ -63,7 +63,7 @@ def test_multirun():
 
     # Set parameters for multirun processing
     nruns = 100
-    filebase = '../TOPAS_CellsNPs/work/CellColony-med0-cell0/cell17'
+    filebase = '../TOPAS_CellsNPs/work/CellColony-med1-cell1/cell1'
 
     # Process all runs and get results
     Cell_results = multirun_processing(nruns, filebase)
@@ -81,8 +81,8 @@ def test_multirun():
    #     plot_gvalues(Cell_results['GValues'])
 
      # Plot number of molecules if chemical species data is available    
-   # if any('value' in data for data in Cell_results['NumberOfMolecules'].values()):
-   #     plot_gvalues(Cell_results['NumberOfMolecules'])
+    if any('value' in data for data in Cell_results['NumberOfMolecules'].values()):
+        plot_gvalues(Cell_results['NumberOfMolecules'])
     
 
 
@@ -100,12 +100,12 @@ def test_multicell_analysis():
     )
 
     # Set parameters for multicell processing
-    n_cells = 40 # Number of cells to process
+    n_cells = 80 # Number of cells to process
     n_runs = 100  # Number of runs per cell
-    base_dir = '../TOPAS_CellsNPs/work/CellColony-med0-cell0'  # Base directory containing cell directories
+    base_dir = '../TOPAS_CellsNPs/work/NanoBrachy-CellColony-MDAMB231-med0-cell1'  # Base directory containing cell directories
 
     # Process all cells and their runs
-   # all_cell_results_med_cell = multicell_processing(n_cells, n_runs, base_dir, save_json=True)
+    all_cell_results_med_cell = multicell_processing(n_cells, n_runs, base_dir, save_json=True)
 
     # Read from the JSON file if it exists
     json_path = os.path.join(base_dir, 'multicell_results.json')
@@ -127,45 +127,59 @@ def test_enhancement_ratios():
 
     n_cells = 40  # Number of cells to process
     n_runs = 100  # Number of runs per cell
+
+
     # Process conditions without nanoparticles  
     base_dir = '../TOPAS_CellsNPs/work/CellColony-med0-cell0'  # Base directory containing cell directories
     #all_cell_results_med0_cell0 = multicell_processing(n_cells, n_runs, base_dir)
     json_path = os.path.join(base_dir, 'multicell_results.json')
-    all_cell_results_med0_cell0 = read_multicell_json(json_path)
-    multicell_stats_med0_cell0 = process_multicell_results(all_cell_results_med0_cell0)
+    all_cell_results = read_multicell_json(json_path)
+    multicell_stats_med0_cell0 = process_multicell_results(all_cell_results)
     list_multicell_stats.append(multicell_stats_med0_cell0)
-
-    # Process conditions with nanoparticles 1mg/ml 
-    base_dir = '../TOPAS_CellsNPs/work/CellColony-med1-cell1'  # Base directory containing cell directories
-    #all_cell_results_med1_cell1 = multicell_processing(n_cells, n_runs, base_dir)
-    json_path = os.path.join(base_dir, 'multicell_results.json')
-    all_cell_results_med1_cell1 = read_multicell_json(json_path)
-    multicell_stats_med1_cell1 = process_multicell_results(all_cell_results_med1_cell1)
-    list_multicell_stats.append(multicell_stats_med1_cell1)
-
-    # Process conditions with nanoparticles 5mg/ml 
-    base_dir = '../TOPAS_CellsNPs/work/CellColony-med5-cell5'  # Base directory containing cell directories
-    #all_cell_results_med1_cell1 = multicell_processing(n_cells, n_runs, base_dir)
-    json_path = os.path.join(base_dir, 'multicell_results.json')
-    all_cell_results_med5_cell5 = read_multicell_json(json_path)
-    multicell_stats_med5_cell5 = process_multicell_results(all_cell_results_med5_cell5)
-    list_multicell_stats.append(multicell_stats_med5_cell5)
+   
 
 
     # Store the enhancement results in a list for comparison
     all_enhancement_results = []
 
-    # Compute enhancement ratios for 1mg/ml NPs vs Control
-    enhancement_1mg = compute_enhancement_ratios(
-        multicell_stats_med1_cell1, 
+    # Process conditions with nanoparticles 1mg/ml
+    base_dir = '../TOPAS_CellsNPs/work/CellColony-med1-cell1'  # Base directory containing cell directories
+    #all_cell_results = multicell_processing(n_cells, n_runs, base_dir)
+    json_path = os.path.join(base_dir, 'multicell_results.json')
+    all_cell_results = read_multicell_json(json_path)
+    multicell_stats_np = process_multicell_results(all_cell_results)
+    list_multicell_stats.append(multicell_stats_np)
+    enhancement = compute_enhancement_ratios(
+        multicell_stats_np, 
         multicell_stats_med0_cell0,
         scenario_label="1mg/ml NPs"
     )
-    all_enhancement_results.append(enhancement_1mg)
+    all_enhancement_results.append(enhancement)
 
-    # Compute enhancement ratios for 5mg/ml NPs vs Control
+
+    # Process conditions with nanoparticles 1mg/ml clustered distribution
+    base_dir = '../TOPAS_CellsNPs/work/CellColony-med1-cell1-LogNormDist'  # Base directory containing cell directories
+    #all_cell_results = multicell_processing(n_cells, n_runs, base_dir)
+    json_path = os.path.join(base_dir, 'multicell_results.json')
+    all_cell_results = read_multicell_json(json_path)
+    multicell_stats_np = process_multicell_results(all_cell_results)
+    list_multicell_stats.append(multicell_stats_np)
+    enhancement = compute_enhancement_ratios(
+        multicell_stats_np, 
+        multicell_stats_med0_cell0,
+        scenario_label="1mg/ml NPs clustered"
+    )
+    # all_enhancement_results.append(enhancement)
+
+    # Process conditions with nanoparticles 5mg/ml 
+    base_dir = '../TOPAS_CellsNPs/work/CellColony-med5-cell5'  # Base directory containing cell directories
+    #all_cell_results = multicell_processing(n_cells, n_runs, base_dir)
+    json_path = os.path.join(base_dir, 'multicell_results.json')
+    all_cell_results = read_multicell_json(json_path)
+    multicell_stats_np = process_multicell_results(all_cell_results)
+    # list_multicell_stats.append(multicell_stats_np)
     enhancement_5mg = compute_enhancement_ratios(
-        multicell_stats_med5_cell5, 
+        multicell_stats_np, 
         multicell_stats_med0_cell0,
         scenario_label="5mg/ml NPs"
     )

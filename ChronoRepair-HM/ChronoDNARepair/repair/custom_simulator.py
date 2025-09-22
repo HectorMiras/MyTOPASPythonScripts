@@ -216,7 +216,7 @@ class CustomSimulator(BaseSimulator):
                     
                     # Only plot for the last cell (when we've reached nCells)
                     plot_this_cell = (simulated_cells == nCells)
-                    self.runManager.plotflag = plot_this_cell
+                   # self.runManager.plotflag = plot_this_cell
                     
                     # Run for this cell - note the proper capitalization of 'Run'
                     self.runManager.Run(verbose=verbose, 

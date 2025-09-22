@@ -159,7 +159,7 @@ class AverageTimeCurveOverRuns:
         ax.set_ylabel(ylabel)
         ax.set_xlim([0, np.max(self.times)*1.01])
         ax.set_ylim([0, np.max(self.avgyvalues + np.sqrt(self.varyvalues))])
-        plt.show()
+       # plt.show()
         if self.refdata is not None:
             ax.scatter(self.refdata.x, self.refdata.y, label='Experimental points')
             ax.legend()
@@ -226,7 +226,7 @@ class TimeCurveForSingleRun:
         ax.set_ylabel(self.ylabel)
         ax.set_xlim([0, np.max(self.times)*1.01])
         ax.set_ylim([0, np.max(self.yvalues)])
-        plt.show()
+       # plt.show()
         if self.refdata is not None:
             ax.scatter(self.refdata.x, self.refdata.y, label='Experimental points')
             ax.legend()

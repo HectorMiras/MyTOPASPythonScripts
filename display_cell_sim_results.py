@@ -511,6 +511,8 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
     # Define all columns
     columns = [
         'Cell',
+        'Original histories',
+        'DoseToCell_ph1 (Gy)',
         'DoseToNucl_ph2 (Gy)', 
         'DoseToNucl_ph3 (Gy)',
         'Energy to Cell (MeV)',
@@ -542,6 +544,8 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
     for i, cell_results in enumerate(all_cell_results):
         row = [
             f'{i+1}',
+            cell_results['Original_hists']['value'],
+            cell_results['DoseToCell_ph1']['value'],
             cell_results['DoseToNucl_ph2']['value'],
             cell_results['DoseToNucl_ph3']['value'],
             cell_results['Ecell']['value'],
@@ -567,13 +571,8 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
     
 
     # Add mean values row
-    mean_row = [
-        'Mean',
-        multicell_stats['DoseToNucl_ph2']['mean'],
-        multicell_stats['DoseToNucl_ph3']['mean'],
-        multicell_stats['Ecell']['mean'],
-        multicell_stats['NP_el']['mean'],
-    ]
+    mean_row = ['Mean']
+    mean_row.extend([multicell_stats[key]['mean'] for key in multicell_stats if 'mean' in multicell_stats[key]]) 
     # Add DNA damage means
     if isDNA_damage:
         mean_row.extend([
@@ -593,12 +592,9 @@ def display_multicell_results(all_cell_results, multicell_stats, save_plots=Fals
 
     # Add standard deviation row
     error_row = [
-       'Uncertainty',
-        multicell_stats['DoseToNucl_ph2']['error'],
-        multicell_stats['DoseToNucl_ph3']['error'],
-        multicell_stats['Ecell']['error'],
-        multicell_stats['NP_el']['error']
+       'Uncertainty'
     ]
+    error_row.extend([multicell_stats[key]['error'] for key in multicell_stats if 'error' in multicell_stats[key]])
     # Add DNA damage standard deviations
     if isDNA_damage:
         error_row.extend([
@@ -808,6 +804,31 @@ def extract_enhancement_data(enhancement_results, category):
             errors.append(result['uncertainty'])
             labels.append(f'G({species})')
     
+    elif category == 'NumberOfMolecules':
+        # Extract Number of Molecules data    
+        data = []
+        labels = []
+        errors = []
+        
+        for species in enhancement_results['NumberOfMolecules']:
+            result = enhancement_results['NumberOfMolecules'][species]
+            data.append(result['ratio'])
+            errors.append(result['uncertainty'])
+            labels.append(f'{species}')
+
+    elif category == 'NumberOfMolecules_per_MeV':
+        # Extract Number of Molecules data    
+        data = []
+        labels = []
+        errors = []
+        
+        for species in enhancement_results['NumberOfMolecules_per_MeV']:
+            result = enhancement_results['NumberOfMolecules_per_MeV'][species]
+            data.append(result['ratio'])
+            errors.append(result['uncertainty'])
+            labels.append(f'{species}')
+
+    
     elif category == 'dna_damage':
         # Extract DNA Damage data
         data = []
@@ -921,7 +942,9 @@ def plot_multi_enhancement_categories(enhancement_results_list):
         ('dna_damage', 'DNA Damage'),
         ('complexity', 'Complexity'),
         ('dna_damage_per_gy', 'DNA Damage per Gy'),
-        ('complexity_per_gy', 'Complexity per Gy')
+        ('complexity_per_gy', 'Complexity per Gy'),
+        ('NumberOfMolecules', 'Number of Molecules'),
+        ('NumberOfMolecules_per_MeV', 'Number of Molecules per MeV')
     ]
     
     # Get scenario labels
@@ -962,7 +985,8 @@ def plot_multi_enhancement_categories(enhancement_results_list):
                 'dna_damage': ['Double Strand\nBreaks', 'Single Strand\nBreaks', 'Strand\nBreaks', 'Base\nDamage'],
                 'dna_damage_per_gy': ['Double Strand\nBreaks/Gy', 'Single Strand\nBreaks/Gy', 
                                      'Strand\nBreaks/Gy', 'Base\nDamage/Gy'],
-                'gvalues': sorted(list(all_labels))  # Sort alphabetically for G-values
+                'NumberOfMolecules': sorted(list(all_labels)),  # Sort alphabetically for G-values
+                'NumberOfMolecules_per_MeV': sorted(list(all_labels))
             }
             common_labels = predefined_labels.get(category_key, sorted(list(all_labels)))
         
@@ -1075,10 +1099,10 @@ def display_enhancement_table_grouped(enhancement_results):
     # ---- Group NumberOfMolecules ----
     if isNumberOfMolecules:
         data_nmolvalues = []
-        for species in enhancement_results['GValues']:
-            result = enhancement_results['GValues'][species]
+        for species in enhancement_results['NumberOfMolecules']:
+            result = enhancement_results['NumberOfMolecules'][species]
             data_nmolvalues.append([
-                f'G-Value ({species})',
+                f'NumberOfMolecules ({species})',
                 result['ratio'],
                 result['uncertainty']
             ])
@@ -1086,7 +1110,7 @@ def display_enhancement_table_grouped(enhancement_results):
         # ---- Group NumberOfMolecules per MeV ----
         data_nmolvalues_per_gy = []
         if 'NumberOfMolecules_per_MeV' in enhancement_results:
-            for species in enhancement_results:
+            for species in enhancement_results['NumberOfMolecules_per_MeV']:
                 result = enhancement_results['NumberOfMolecules_per_MeV'][species]
                 data_nmolvalues_per_gy.append([
                     f'Number of molecules ({species}) per MeV',
@@ -1192,7 +1216,7 @@ def display_enhancement_table_grouped(enhancement_results):
     dfs = {"Dose and Energy Enhancement": format_and_style_df(data_dose_energy, "Dose and Energy Enhancement")    }
     if isNumberOfMolecules:
         dfs["Number of Molecules Enhancement"] = format_and_style_df(data_nmolvalues, "Number of Molecules Enhancement")
-        dfs["Number of Molecules per MeV Enhancement"] = format_and_style_df(data_nmolvalues, "Number of Molecules per MeV Enhancement")
+        dfs["Number of Molecules per MeV Enhancement"] = format_and_style_df(data_nmolvalues_per_gy, "Number of Molecules per MeV Enhancement")
     if isGValues:
         dfs["G-Values Enhancement"] = format_and_style_df(data_gvalues, "G-Values Enhancement")
     if isDNA_damage:
